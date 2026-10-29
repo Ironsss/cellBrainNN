@@ -1230,7 +1230,7 @@ class CompareChart {
   constructor(canvas) { this.canvas = canvas; }
   resize() { const s = setupCanvas(this.canvas, 190); this.ctx = s.ctx; this.w = s.w; this.h = s.h; }
   draw(out, maxEp) {
-    const c = this.ctx; if (!c) return; const W = this.w, H = this.h, P = { l: 36, r: 8, t: 8, b: 22 }, pw = W - P.l - P.r, ph = H - P.t - P.b;
+    const c = this.ctx; if (!c) return; const W = this.w, H = this.h, P = { l: 36, r: 18, t: 8, b: 22 }, pw = W - P.l - P.r, ph = H - P.t - P.b;
     c.clearRect(0, 0, W, H); c.font = '11px ' + getComputedStyle(document.body).fontFamily;
     const X = e => P.l + e / maxEp * pw, Y = v => P.t + (1 - v) * ph;
     for (let i = 0; i <= 4; i++) { const y = Y(i / 4); c.strokeStyle = Theme.c('border', 1); c.beginPath(); c.moveTo(P.l, y); c.lineTo(W - P.r, y); c.stroke(); c.fillStyle = Theme.c('muted-foreground', 1); c.textAlign = 'right'; c.textBaseline = 'middle'; c.fillText(i * 25 + '%', P.l - 5, y); }
@@ -1241,7 +1241,7 @@ class CompareChart {
     line(out.A, 'signal'); line(out.B, 'exp');
     const lg = [['Seed A', 'signal'], ['Seed B', 'exp'], ['Random', 'muted-foreground']]; let x = P.l + 6;
     c.textAlign = 'left'; c.textBaseline = 'middle';
-    for (const [t, col] of lg) { c.fillStyle = Theme.c(col, 1); c.fillRect(x, P.t + 8, 10, 3); c.fillStyle = Theme.c('foreground', 1); c.fillText(t, x + 14, P.t + 10); x += 68; }
+    for (const [t, col] of lg) { c.fillStyle = Theme.c(col, 1); c.fillRect(x, P.t + ph * 0.55, 10, 3); c.fillStyle = Theme.c('foreground', 1); c.fillText(t, x + 14, P.t + ph * 0.55 + 2); x += 68; }
   }
 }
 
