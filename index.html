@@ -193,6 +193,17 @@ dialog::backdrop{background:rgba(0,0,0,.55);backdrop-filter:blur(4px)}
 .toast[data-k=error]{border-color:hsl(var(--destructive))}
 @keyframes in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+
+/* About band */
+.intro{grid-column:1/-1}
+.intro .card-header{align-items:center}
+.intro-lead{font-size:14px;line-height:1.6;max-width:78ch;color:hsl(var(--foreground))}
+.intro-grid{display:grid;gap:1px;margin-top:16px;background:hsl(var(--border));border:1px solid hsl(var(--border));border-radius:var(--radius);overflow:hidden;grid-template-columns:minmax(0,1fr)}
+@media(min-width:760px){.intro-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.intro-grid>div{background:hsl(var(--card));padding:14px}
+.intro-grid h3{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:hsl(var(--muted-foreground));margin-bottom:6px}
+.intro-grid p{font-size:13px;line-height:1.55}
+.intro-foot{margin-top:14px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
 </style>
 </head>
 <body>
@@ -210,6 +221,21 @@ dialog::backdrop{background:rgba(0,0,0,.55);backdrop-filter:blur(4px)}
 </header>
 
 <main id="main" class="layout">
+<section class="card intro" id="aboutCard" aria-labelledby="abTitle">
+  <div class="card-header">
+    <div><h2 id="abTitle" class="card-title">About this experiment</h2><p class="card-desc">A computational analogue of learning in a dish</p></div>
+    <button id="btnAboutToggle" class="btn outline sm" type="button" aria-expanded="true" aria-controls="aboutBody">Hide</button>
+  </div>
+  <div class="card-content" id="aboutBody">
+    <p class="intro-lead">In 2022, Kagan and colleagues reported that cultured neurons on a multi-electrode array, stimulated and recorded in a closed loop with a simulated Pong game, changed their activity in ways consistent with adapting to the game when feedback was predictable (<a href="#panGuide" data-goto="refs">references</a>). NeuroDish asks a related, fully computational question: how does an artificial agent learn the same kind of interception task from reward and penalty signals, and how do you tell real learning from chance? Every variable of the process is visible and reproducible.</p>
+    <div class="intro-grid">
+      <div><h3>The task</h3><p>A ball moves through a simulated culture dish. The agent controls a paddle and must intercept it. Each ball arrival is a hit or a miss.</p></div>
+      <div><h3>The learner</h3><p>Tabular Q-learning. It observes a discretized state, picks Up, Stay or Down, and updates its value estimates from the outcome. The network panel shows its signals; it is not the learner.</p></div>
+      <div><h3>The evidence</h3><p>Compare an untrained agent, a training curve, and a frozen-policy evaluation against a random baseline on the same seed. A rising curve alone is not proof.</p></div>
+    </div>
+    <div class="intro-foot"><span class="hint">This is a simulation inspired by neuroscience, not a measurement of biological neurons. Unlike the biological study, feedback here is a numeric reward, not predictable or unpredictable stimulation.</span></div>
+  </div>
+</section>
 <div class="stack">
 
   <section class="card o1" aria-labelledby="vpTitle">
@@ -293,6 +319,15 @@ dialog::backdrop{background:rgba(0,0,0,.55);backdrop-filter:blur(4px)}
         <details><summary>Metric definitions</summary><ul><li><b>Episode</b>: one rally; it ends at a miss or after the rally cap of returns.</li><li><b>Interceptions / misses</b>: ball arrivals at the paddle plane that were hit / missed.</li><li><b>Interception rate</b>: interceptions ÷ (interceptions + misses), shown as — until an attempt exists.</li><li><b>Recent rate</b>: same ratio over the last N episodes (rolling window).</li><li><b>Cumulative reward</b>: sum of task rewards (excluding shaping) in the selected dataset.</li><li><b>Exploration ε</b>: probability of a random action. Decays per training episode.</li><li><b>States visited / updates</b>: distinct states and total Q-updates applied.</li></ul><p>Training, evaluation and manual datasets are tracked separately.</p></details>
         <details><summary>Audio is feedback, not an input</summary><p>The success tone and the noise burst are rendered for the observer. They are not fed to the agent, so muting them does not change learning. Reinforcement conditions change the numeric learning signal only.</p></details>
         <details><summary>Evidence of learning</summary><p>A rising training curve alone is not proof: it mixes exploration with learning. Run a frozen-policy evaluation and a random-policy baseline on the same seed, then compare intervals in the Experiment sheet.</p></details>
+        <details id="refsBox"><summary>References</summary><ul>
+          <li>Kagan, B. J., et al. (2022). In vitro neurons learn and exhibit sentience when embodied in a simulated game-world. <i>Neuron</i>, 110(23), 3952–3969. doi:10.1016/j.neuron.2022.09.001</li>
+          <li>Balci, F., et al. (2023). A response to claims of emergent intelligence and sentience in a dish. <i>Neuron</i>, 111(5), 604–605. doi:10.1016/j.neuron.2023.02.009</li>
+          <li>Watkins, C. J. C. H., &amp; Dayan, P. (1992). Q-learning. <i>Machine Learning</i>, 8, 279–292.</li>
+          <li>Sutton, R. S., &amp; Barto, A. G. (2018). <i>Reinforcement Learning: An Introduction</i> (2nd ed.). MIT Press.</li>
+          <li>Ng, A. Y., Harada, D., &amp; Russell, S. (1999). Policy invariance under reward transformations. <i>ICML</i>, 278–287.</li>
+          <li>Schultz, W., Dayan, P., &amp; Montague, P. R. (1997). A neural substrate of prediction and reward. <i>Science</i>, 275, 1593–1599.</li>
+          <li>Wilson, E. B. (1927). Probable inference, the law of succession, and statistical inference. <i>JASA</i>, 22(158), 209–212.</li>
+        </ul></details>
       </div>
     </div>
   </section>
@@ -1398,6 +1433,12 @@ class ApplicationController {
       tabs.forEach((t, i) => { t.addEventListener('click', () => select(t)); t.addEventListener('keydown', e => { const d = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0; if (d) { e.preventDefault(); const n = tabs[(i + d + tabs.length) % tabs.length]; n.focus(); select(n); } }); });
       list.selectTab = select; list.tabs = tabs; select(tabs[0]);
     });
+    // About band toggle
+    const ab = this.$('btnAboutToggle'), abBody = this.$('aboutBody');
+    const setAbout = open => { abBody.hidden = !open; ab.textContent = open ? 'Hide' : 'Show'; ab.setAttribute('aria-expanded', open); this.$('aboutCard').querySelector('.card-header').style.paddingBottom = open ? '' : '16px'; try { localStorage.setItem('neurodish.about', open ? '1' : '0'); } catch (e) { /* storage unavailable */ } };
+    ab.addEventListener('click', () => setAbout(abBody.hidden));
+    try { if (localStorage.getItem('neurodish.about') === '0') setAbout(false); } catch (e) { /* storage unavailable */ }
+    document.querySelectorAll('[data-goto=refs]').forEach(a => a.addEventListener('click', e => { e.preventDefault(); document.querySelector('[data-tabs=res]').selectTab(this.$('tabGuide')); const d = this.$('refsBox'); d.open = true; d.scrollIntoView({ behavior: this.reduceMotion ? 'auto' : 'smooth', block: 'center' }); }));
     // Mode + dataset views
     this.$('modeSeg').addEventListener('click', e => { const b = e.target.closest('[data-mode]'); if (b) this.setMode(b.dataset.mode); });
     this.$('viewSeg').addEventListener('click', e => { const b = e.target.closest('[data-view]'); if (b) { this.view = b.dataset.view; this.updateAll(); } });

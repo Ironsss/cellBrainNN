@@ -21,6 +21,14 @@ An interactive computational experiment, inspired by neurons-in-a-dish research,
 
 > **Scientific honesty.** NeuroDish is a *computational simulation inspired by* neuroscience. The agent is a tabular Q-learning algorithm; the network drawn next to it is an **activity representation** of that agent. Nothing here is a measurement of, or evidence about, real biological tissue.
 
+## Background
+
+In 2022, Kagan and colleagues reported that cultured neurons on a multi-electrode array, connected in a closed loop to a simulated Pong game, changed their activity in ways consistent with adapting to the game when feedback was predictable (Kagan et al., 2022). The claims of sentience attached to that work were contested (Balci et al., 2023).
+
+NeuroDish does **not** use biological cells. It asks a related, fully computational question: how does an artificial agent learn the same kind of interception task from reward and penalty signals, and how do you distinguish real learning from chance? Unlike the biological study, feedback here is a numeric reward rather than predictable or unpredictable stimulation. The same explanation is shown inside the app, in the *About this experiment* band.
+
+<img src="docs/screenshots/00-about.png" alt="About this experiment band inside the app" width="100%">
+
 ## Highlights
 
 - **A real learner, not an animation.** Epsilon-greedy Q-learning with the exact update `Q(s,a) ← Q(s,a) + α[r + γ·max Q(s′,a′) − Q(s,a)]`, terminal states handled correctly, and episodes truncated by the rally cap still bootstrapping.
@@ -132,6 +140,18 @@ Debug hook: append `?debug=1` to the URL to expose the controller as `window.__n
 - With default settings the agent solves the task quickly. Use *Outcome-only*, higher variability or a faster paddle/ball ratio to see slower, more informative learning curves.
 - Confidence intervals are approximate because attempts within one rally are not fully independent.
 - Results describe a computational policy under specific reward signals, not biological learning.
+
+## Bibliography
+
+1. Kagan, B. J., Kitchen, A. C., Tran, N. T., et al. (2022). In vitro neurons learn and exhibit sentience when embodied in a simulated game-world. *Neuron*, 110(23), 3952–3969. https://doi.org/10.1016/j.neuron.2022.09.001
+2. Balci, F., Ben Hamed, S., Boraud, T., et al. (2023). A response to claims of emergent intelligence and sentience in a dish. *Neuron*, 111(5), 604–605. https://doi.org/10.1016/j.neuron.2023.02.009
+3. Watkins, C. J. C. H., & Dayan, P. (1992). Q-learning. *Machine Learning*, 8, 279–292. https://doi.org/10.1007/BF00992698
+4. Sutton, R. S., & Barto, A. G. (2018). *Reinforcement Learning: An Introduction* (2nd ed.). MIT Press.
+5. Ng, A. Y., Harada, D., & Russell, S. (1999). Policy invariance under reward transformations: theory and application to reward shaping. *Proceedings of the 16th International Conference on Machine Learning*, 278–287.
+6. Schultz, W., Dayan, P., & Montague, P. R. (1997). A neural substrate of prediction and reward. *Science*, 275(5306), 1593–1599. https://doi.org/10.1126/science.275.5306.1593
+7. Wilson, E. B. (1927). Probable inference, the law of succession, and statistical inference. *Journal of the American Statistical Association*, 22(158), 209–212. https://doi.org/10.1080/01621459.1927.10502953
+
+**How they are used here:** (1) motivates the task; (2) records the scientific debate over its interpretation; (3, 4) define the Q-learning update and epsilon-greedy policy; (5) is the reference point for the small, potential-style reward shaping; (6) motivates showing the TD error as a signal; (7) is the confidence interval used for evaluation rates.
 
 ## Roadmap
 
