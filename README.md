@@ -13,7 +13,9 @@ An interactive computational experiment, inspired by neurons-in-a-dish research,
 
 <br>
 
-<img src="docs/screenshots/01-dashboard-dark.png" alt="NeuroDish dashboard in dark theme: culture dish, telemetry, Q-value map" width="100%">
+### [▶ Live demo — ironsss.github.io/cellBrainNN](https://ironsss.github.io/cellBrainNN/)
+
+<a href="https://ironsss.github.io/cellBrainNN/"><img src="docs/screenshots/01-dashboard-dark.png" alt="NeuroDish dashboard in dark theme: culture dish, telemetry, Q-value map" width="100%"></a>
 
 </div>
 
@@ -62,7 +64,7 @@ NeuroDish does **not** use biological cells. It asks a related, fully computatio
 
 ## Quick start
 
-**Online:** enable *Settings → Pages → Deploy from branch → `main` / root*, then open `https://<user>.github.io/cellBrainNN/`.
+**Online:** open the live demo at **https://ironsss.github.io/cellBrainNN/** (served by GitHub Pages from the `main` branch).
 
 **Locally:** open `index.html` in any modern browser. No server is required.
 
