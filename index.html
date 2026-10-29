@@ -1,0 +1,1816 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>NeuroDish — Artificial Neural Learning Laboratory</title>
+<meta name="description" content="NeuroDish is an interactive computational experiment: a Q-learning agent learns to intercept a ball, with a neural activity visualization, audio feedback and reproducible evaluation. A simulation, not biological tissue.">
+<script>
+(function(){try{var t=localStorage.getItem('neurodish.theme');if(t!=='light'&&t!=='dark'){t=matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';}document.documentElement.dataset.theme=t;}catch(e){document.documentElement.dataset.theme='dark';}})();
+</script>
+<style>
+:root{
+  --radius:.625rem;
+  --background:0 0% 100%;--foreground:240 10% 3.9%;
+  --card:0 0% 100%;--muted:240 4.8% 95.9%;--muted-foreground:240 3.8% 42%;
+  --border:240 5.9% 90%;--input:240 5.9% 87%;
+  --primary:240 5.9% 10%;--primary-foreground:0 0% 98%;
+  --secondary:240 4.8% 95.9%;--accent:240 4.8% 94%;--ring:240 5.9% 10%;
+  --destructive:0 72% 48%;
+  --signal:175 84% 27%;--penalty:28 92% 38%;--exp:262 62% 50%;
+  --font:-apple-system,BlinkMacSystemFont,"SF Pro Text","Inter","Segoe UI",Roboto,system-ui,sans-serif;
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
+  color-scheme:light;
+}
+:root[data-theme=dark]{
+  --background:240 10% 3.9%;--foreground:0 0% 98%;
+  --card:240 6% 6.5%;--muted:240 3.7% 13%;--muted-foreground:240 5% 65%;
+  --border:240 3.7% 15.9%;--input:240 3.7% 18%;
+  --primary:0 0% 98%;--primary-foreground:240 5.9% 10%;
+  --secondary:240 3.7% 15.9%;--accent:240 3.7% 15.9%;--ring:240 4.9% 83.9%;
+  --destructive:0 72% 51%;
+  --signal:172 66% 50%;--penalty:38 92% 55%;--exp:258 90% 76%;
+  color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:border-box}
+[hidden]{display:none!important}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:hsl(var(--background));color:hsl(var(--foreground));font:14px/1.5 var(--font);-webkit-font-smoothing:antialiased;overflow-x:hidden}
+h1,h2,h3,p{margin:0}
+button,input,select{font:inherit;color:inherit}
+.num,output,.mono{font-variant-numeric:tabular-nums}
+.muted{color:hsl(var(--muted-foreground))}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.skip{position:absolute;left:8px;top:-48px;background:hsl(var(--primary));color:hsl(var(--primary-foreground));padding:8px 12px;border-radius:8px;z-index:100}
+.skip:focus{top:8px}
+:focus-visible{outline:2px solid hsl(var(--ring));outline-offset:2px}
+
+/* Top bar */
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;border-bottom:1px solid hsl(var(--border));position:sticky;top:0;z-index:20;background:hsl(var(--background)/.85);backdrop-filter:saturate(180%) blur(14px);-webkit-backdrop-filter:saturate(180%) blur(14px)}
+.brand{display:flex;align-items:center;gap:10px;min-width:0}
+.logo{width:28px;height:28px;color:hsl(var(--foreground));flex:none}
+.brand h1{font-size:15px;font-weight:600;letter-spacing:-.01em;line-height:1.2}
+.brand p{font-size:12px;color:hsl(var(--muted-foreground));line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.topbar-actions{display:flex;align-items:center;gap:6px}
+
+/* Layout */
+.layout{display:grid;gap:16px;padding:16px;max-width:1480px;margin:0 auto;grid-template-columns:minmax(0,1fr)}
+.stack{display:flex;flex-direction:column;gap:16px;min-width:0}
+@media(max-width:1039px){.stack{display:contents}.o1{order:1}.o2{order:2}.o3{order:3}.o4{order:4}.o5{order:5}.o6{order:6}}
+@media(min-width:1040px){.layout{grid-template-columns:minmax(0,1.6fr) minmax(380px,1fr);align-items:start}}
+
+/* Card */
+.card{background:hsl(var(--card));border:1px solid hsl(var(--border));border-radius:calc(var(--radius) + 2px);box-shadow:0 1px 2px hsl(240 10% 4%/.04);min-width:0}
+.card-header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:16px 16px 12px;flex-wrap:wrap}
+.card-title{font-size:14px;font-weight:600;letter-spacing:-.005em;line-height:1.3}
+.card-desc{font-size:12px;color:hsl(var(--muted-foreground));margin-top:2px}
+.card-content{padding:0 16px 16px}
+.card-footer{padding:12px 16px;border-top:1px solid hsl(var(--border))}
+.row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.sep{height:1px;background:hsl(var(--border));margin:14px 0;border:0}
+
+/* Buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:36px;padding:0 14px;border-radius:calc(var(--radius) - 2px);border:1px solid transparent;font-size:13px;font-weight:500;cursor:pointer;white-space:nowrap;transition:background-color .15s,border-color .15s,opacity .15s;background:hsl(var(--primary));color:hsl(var(--primary-foreground));user-select:none;-webkit-tap-highlight-color:transparent}
+.btn:hover{opacity:.9}
+.btn svg{width:16px;height:16px;flex:none}
+.btn.secondary{background:hsl(var(--secondary));color:hsl(var(--foreground))}
+.btn.secondary:hover{background:hsl(var(--accent));opacity:1}
+.btn.outline{background:transparent;color:hsl(var(--foreground));border-color:hsl(var(--input))}
+.btn.outline:hover{background:hsl(var(--accent));opacity:1}
+.btn.ghost{background:transparent;color:hsl(var(--foreground))}
+.btn.ghost:hover{background:hsl(var(--accent));opacity:1}
+.btn.destructive{background:hsl(var(--destructive));color:#fff}
+.btn.sm{height:30px;padding:0 10px;font-size:12px}
+.btn.icon{width:36px;padding:0}
+.btn.sm.icon{width:30px}
+.btn:disabled,.btn[aria-disabled=true]{opacity:.45;cursor:not-allowed;pointer-events:none}
+.btn.lg{height:44px;padding:0 20px;font-size:14px}
+
+/* Badge */
+.badge{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 10px;border-radius:999px;border:1px solid hsl(var(--border));font-size:12px;font-weight:500;color:hsl(var(--foreground));white-space:nowrap}
+.badge::before{content:"";width:6px;height:6px;border-radius:50%;background:hsl(var(--muted-foreground))}
+.badge[data-state=running]::before{background:hsl(var(--signal))}
+.badge[data-state=eval]::before{background:hsl(var(--exp))}
+.badge[data-state=manual]::before{background:hsl(var(--foreground))}
+
+/* Segmented / tabs */
+.segmented,.tablist{display:inline-flex;gap:2px;padding:3px;background:hsl(var(--muted));border-radius:var(--radius);max-width:100%;overflow-x:auto;scrollbar-width:none}
+.segmented button,.tablist button{height:30px;padding:0 12px;border:0;border-radius:calc(var(--radius) - 3px);background:transparent;color:hsl(var(--muted-foreground));font-size:13px;font-weight:500;cursor:pointer;white-space:nowrap}
+.segmented button[aria-pressed=true],.tablist button[aria-selected=true]{background:hsl(var(--background));color:hsl(var(--foreground));box-shadow:0 1px 2px hsl(240 10% 4%/.12)}
+.segmented button:disabled{opacity:.45;cursor:not-allowed}
+.tabs-wrap{padding:0 16px 16px}
+.tabpanel{padding-top:14px}
+
+/* Stage */
+.stage{position:relative;margin:0 16px;aspect-ratio:8/5;background:#05070a;border-radius:var(--radius);overflow:hidden;border:1px solid hsl(var(--border));touch-action:none}
+.stage.portrait{aspect-ratio:5/8;width:min(calc(100% - 32px),calc(72vh*5/8));margin-inline:auto}
+.stage canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.hud{position:absolute;display:flex;gap:6px;pointer-events:none;font-size:11px;font-family:var(--mono);color:rgba(244,244,245,.78)}
+.hud span{background:rgba(9,9,11,.62);border:1px solid rgba(255,255,255,.1);padding:2px 8px;border-radius:999px;letter-spacing:.02em;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.hud.tl{top:10px;left:10px}.hud.tr{top:10px;right:10px}.hud.bl{bottom:10px;left:10px}
+.hud .ok{color:#5eead4}.hud .bad{color:#fbbf24}
+.pad{position:absolute;inset:auto 0 12px 0;display:none;justify-content:space-between;padding:0 12px;pointer-events:none}
+.pad button{pointer-events:auto;width:72px;height:56px;border-radius:14px;border:1px solid rgba(255,255,255,.18);background:rgba(24,24,27,.7);color:#fafafa;font-size:20px;touch-action:none}
+@media(pointer:coarse){.stage[data-mode=manual] .pad{display:flex}}
+.toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:12px 16px 16px}
+.toolbar .grow{flex:1}
+.kbd{font-family:var(--mono);font-size:11px;border:1px solid hsl(var(--border));border-bottom-width:2px;border-radius:5px;padding:0 5px;color:hsl(var(--muted-foreground))}
+@media(max-width:520px){.brand p{display:none}}
+@media(max-width:560px){.hide-sm{display:none}.toolbar .btn.lg{flex:1}}
+
+/* Form controls */
+.field{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
+.field-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+label,.label{font-size:12.5px;font-weight:500}
+output{font-size:12px;color:hsl(var(--muted-foreground));font-family:var(--mono)}
+.hint{font-size:12px;color:hsl(var(--muted-foreground))}
+.input,.select{height:36px;width:100%;border:1px solid hsl(var(--input));background:transparent;border-radius:calc(var(--radius) - 2px);padding:0 10px;font-size:13px}
+.select{appearance:none;-webkit-appearance:none;padding-right:28px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 9px center}
+.select option{background:hsl(var(--card));color:hsl(var(--foreground))}
+.select.inline{width:auto;height:36px}
+.input:disabled,.select:disabled{opacity:.5}
+input[type=range]{width:100%;accent-color:hsl(var(--primary));height:20px;margin:0}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.switch-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 0;cursor:pointer}
+.switch-row .t{display:flex;flex-direction:column}
+.switch-row .d{font-size:12px;color:hsl(var(--muted-foreground));font-weight:400}
+input.switch{appearance:none;-webkit-appearance:none;width:36px;height:20px;flex:none;border-radius:999px;background:hsl(var(--input));position:relative;cursor:pointer;transition:background-color .15s;margin:0}
+input.switch::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:hsl(var(--background));box-shadow:0 1px 2px rgba(0,0,0,.3);transition:transform .15s}
+input.switch:checked{background:hsl(var(--primary))}
+input.switch:checked::after{transform:translateX(16px)}
+input.switch:disabled{opacity:.5;cursor:not-allowed}
+.progress{height:6px;border-radius:999px;background:hsl(var(--muted));overflow:hidden}
+.progress>i{display:block;height:100%;width:0;background:hsl(var(--foreground));transition:width .2s}
+.btn-row{display:flex;flex-wrap:wrap;gap:8px}
+.note{font-size:12px;color:hsl(var(--muted-foreground));border:1px solid hsl(var(--border));background:hsl(var(--muted)/.5);border-radius:calc(var(--radius) - 2px);padding:10px 12px;line-height:1.5}
+
+/* Telemetry */
+.stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;background:hsl(var(--border));border:1px solid hsl(var(--border));border-radius:var(--radius);overflow:hidden}
+@media(min-width:420px){.stats{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.stat{background:hsl(var(--card));padding:10px 12px;min-width:0}
+.stat dt{font-size:11.5px;color:hsl(var(--muted-foreground));white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stat dd{margin:2px 0 0;font-size:18px;font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stat dd small{font-size:11px;font-weight:400;color:hsl(var(--muted-foreground));letter-spacing:0}
+.stat dd.txt{font-size:13px;line-height:26px}
+.diag{margin-top:14px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px;color:hsl(var(--muted-foreground));margin-top:10px}
+.legend i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:0}
+.panel-canvas{position:relative;width:100%;border:1px solid hsl(var(--border));border-radius:var(--radius);background:hsl(var(--muted)/.35);overflow:hidden}
+.panel-canvas canvas{display:block;width:100%}
+.tooltip{position:absolute;pointer-events:none;background:hsl(var(--card));border:1px solid hsl(var(--border));border-radius:8px;padding:6px 8px;font-size:12px;box-shadow:0 4px 14px rgba(0,0,0,.2);white-space:nowrap;z-index:5}
+
+/* Table / log / guide */
+.table{width:100%;border-collapse:collapse;font-size:12.5px}
+.table th{text-align:left;font-weight:500;color:hsl(var(--muted-foreground));padding:6px 8px;border-bottom:1px solid hsl(var(--border));white-space:nowrap}
+.table td{padding:6px 8px;border-bottom:1px solid hsl(var(--border));font-variant-numeric:tabular-nums;white-space:nowrap}
+.scroll-x{overflow-x:auto}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 16px;font-size:12.5px;margin:0}
+.kv dt{color:hsl(var(--muted-foreground))}.kv dd{margin:0;font-variant-numeric:tabular-nums}
+.log{list-style:none;margin:0;padding:0;max-height:260px;overflow:auto;font-family:var(--mono);font-size:12px;border:1px solid hsl(var(--border));border-radius:var(--radius)}
+.log li{padding:5px 10px;border-bottom:1px solid hsl(var(--border));display:flex;gap:10px}
+.log li:last-child{border-bottom:0}
+.log .tm{color:hsl(var(--muted-foreground));flex:none}
+.log li[data-lv=warn] .ms{color:hsl(var(--penalty))}
+.log li[data-lv=good] .ms{color:hsl(var(--signal))}
+.guide details{border-bottom:1px solid hsl(var(--border));padding:10px 0}
+.guide summary{cursor:pointer;font-weight:500;font-size:13px}
+.guide p,.guide li{font-size:12.5px;color:hsl(var(--muted-foreground));margin-top:8px}
+.guide ul{padding-left:18px;margin:0}
+.guide b{color:hsl(var(--foreground));font-weight:500}
+.interp p{font-size:13px;margin-top:8px}
+
+/* Dialog + toast */
+dialog{border:1px solid hsl(var(--border));border-radius:calc(var(--radius) + 4px);background:hsl(var(--card));color:hsl(var(--foreground));padding:0;width:min(520px,calc(100vw - 32px));box-shadow:0 20px 60px rgba(0,0,0,.45)}
+dialog::backdrop{background:rgba(0,0,0,.55);backdrop-filter:blur(4px)}
+.dlg{padding:24px}
+.dlg h2{font-size:20px;font-weight:600;letter-spacing:-.02em}
+.dlg .eyebrow{font-size:11px;letter-spacing:.16em;color:hsl(var(--muted-foreground));font-weight:600}
+.dlg ol{padding-left:20px;margin:14px 0;color:hsl(var(--muted-foreground));font-size:13px}
+.dlg ol li{margin:4px 0}.dlg ol b{color:hsl(var(--foreground));font-weight:500}
+.dlg .actions{display:flex;justify-content:flex-end;gap:8px;margin-top:18px;flex-wrap:wrap}
+#toasts{position:fixed;bottom:16px;right:16px;display:flex;flex-direction:column;gap:8px;z-index:60;max-width:calc(100vw - 32px)}
+.toast{background:hsl(var(--card));border:1px solid hsl(var(--border));border-radius:var(--radius);padding:10px 14px;font-size:13px;box-shadow:0 8px 24px rgba(0,0,0,.25);animation:in .2s ease}
+.toast[data-k=error]{border-color:hsl(var(--destructive))}
+@keyframes in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to experiment</a>
+<header class="topbar">
+  <div class="brand">
+    <svg class="logo" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="16" cy="16" r="13.5" opacity=".35"/><circle cx="16" cy="16" r="3.2" fill="currentColor"/><path d="M16 12.8V6.5M18.8 17.6l5.4 3.2M13.2 17.6l-5.4 3.2"/><circle cx="16" cy="5.5" r="1.6" fill="currentColor"/><circle cx="25.2" cy="21.4" r="1.6" fill="currentColor"/><circle cx="6.8" cy="21.4" r="1.6" fill="currentColor"/></svg>
+    <div><h1>NeuroDish</h1><p>Artificial Neural Learning Laboratory</p></div>
+  </div>
+  <div class="topbar-actions">
+    <span id="statusBadge" class="badge" role="status" data-state="idle">Idle</span>
+    <button id="btnTheme" class="btn ghost icon" aria-label="Toggle color theme" title="Toggle theme"></button>
+    <button id="btnAbout" class="btn ghost icon" aria-label="About this simulation" title="About"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg></button>
+  </div>
+</header>
+
+<main id="main" class="layout">
+<div class="stack">
+
+  <section class="card o1" aria-labelledby="vpTitle">
+    <div class="card-header">
+      <div><h2 id="vpTitle" class="card-title">Culture dish</h2><p class="card-desc">Simulated environment · interception task</p></div>
+      <div class="segmented" id="modeSeg" role="group" aria-label="Operating mode">
+        <button type="button" data-mode="manual" aria-pressed="false">Manual</button>
+        <button type="button" data-mode="train" aria-pressed="true">AI training</button>
+        <button type="button" data-mode="eval" aria-pressed="false">AI evaluation</button>
+      </div>
+    </div>
+    <div class="stage" id="stage" data-mode="train">
+      <canvas id="dish" role="img" aria-label="Top-down view of a simulated culture dish with a ball, a paddle and faint neural traces"></canvas>
+      <div class="hud tl"><span id="hudL">ND</span></div>
+      <div class="hud tr"><span id="hudR">Ep 1</span></div>
+      <div class="hud bl"><span id="hudB">—</span></div>
+      <div class="pad"><button type="button" id="padUp" aria-label="Move paddle up">&#9650;</button><button type="button" id="padDown" aria-label="Move paddle down">&#9660;</button></div>
+    </div>
+    <div class="toolbar">
+      <button id="btnRun" class="btn lg" type="button"></button>
+      <button id="btnResetEp" class="btn outline" type="button">Reset episode</button>
+      <label class="sr-only" for="selSpeed">Simulation speed</label>
+      <select id="selSpeed" class="select inline" data-cfg="speed" title="Simulation speed">
+        <option value="1">1×</option><option value="2">2×</option><option value="4">4×</option><option value="8">8×</option><option value="16">16×</option><option value="32">32×</option><option value="max">Max</option>
+      </select>
+      <button id="btnMute" class="btn ghost icon" type="button" aria-label="Mute audio"></button>
+      <span class="grow"></span>
+      <span class="hint hide-sm"><span class="kbd">Space</span> run · <span class="kbd">↑</span><span class="kbd">↓</span> / <span class="kbd">W</span><span class="kbd">S</span> manual</span>
+    </div>
+  </section>
+
+  <section class="card o3" aria-labelledby="chTitle">
+    <div class="card-header">
+      <div><h2 id="chTitle" class="card-title">Performance</h2><p class="card-desc" id="chDesc">Training history · rolling window</p></div>
+      <div class="row">
+        <label class="sr-only" for="chartMetric">Metric</label>
+        <select id="chartMetric" class="select inline" data-cfg="chartMetric"><option value="rate">Interception rate</option><option value="reward">Reward / episode</option></select>
+        <label class="sr-only" for="chartWindow">Rolling window</label>
+        <select id="chartWindow" class="select inline" data-cfg="window"><option value="25">25 ep.</option><option value="50">50 ep.</option><option value="100">100 ep.</option><option value="200">200 ep.</option></select>
+      </div>
+    </div>
+    <div class="card-content">
+      <div class="panel-canvas" id="chartWrap"><canvas id="chart" height="220" role="img" aria-label="Rolling performance chart"></canvas><div class="tooltip" id="chartTip" hidden></div></div>
+      <div class="legend" id="chartLegend">
+        <span><i style="background:hsl(var(--signal))"></i>Reinforced</span>
+        <span><i style="background:hsl(var(--exp))"></i>Outcome-only</span>
+        <span><i style="background:hsl(var(--penalty))"></i>No reinforcement</span>
+        <span><i style="background:hsl(var(--foreground));border-radius:1px;transform:rotate(45deg)"></i>Evaluation</span>
+        <span><i style="background:transparent;border:1px dashed hsl(var(--muted-foreground))"></i>Random baseline</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="card o6" aria-label="Results, log and guide">
+    <div class="tabs-wrap" style="padding-top:12px">
+      <div class="tablist" role="tablist" data-tabs="res">
+        <button role="tab" id="tabSummary" aria-controls="panSummary" aria-selected="true">Experiment sheet</button>
+        <button role="tab" id="tabLog" aria-controls="panLog" aria-selected="false">Event log</button>
+        <button role="tab" id="tabGuide" aria-controls="panGuide" aria-selected="false">Guide</button>
+      </div>
+      <div class="tabpanel" id="panSummary" role="tabpanel" aria-labelledby="tabSummary">
+        <dl class="kv" id="sumSheet"></dl>
+        <hr class="sep">
+        <h3 class="label" style="margin-bottom:8px">Frozen-policy evaluations</h3>
+        <div class="scroll-x"><table class="table"><thead><tr><th>#</th><th>After ep.</th><th>Policy</th><th>Episodes</th><th>Hit / miss</th><th>Rate</th><th>95% CI</th></tr></thead><tbody id="sumEvalBody"></tbody></table></div>
+        <hr class="sep">
+        <div class="interp" id="sumInterp"></div>
+        <div class="btn-row" style="margin-top:14px"><button id="btnExportReport" class="btn outline sm" type="button">Export report (JSON)</button><button id="btnExportCsv" class="btn outline sm" type="button">Export training (CSV)</button></div>
+      </div>
+      <div class="tabpanel" id="panLog" role="tabpanel" aria-labelledby="tabLog" hidden>
+        <div class="row" style="justify-content:space-between;margin-bottom:10px">
+          <label class="switch-row" style="padding:0"><input type="checkbox" class="switch" id="logVerbose" data-cfg="verbose"><span class="t">Verbose<span class="d">Include each interception (speed ≤ 4×)</span></span></label>
+          <div class="btn-row"><button id="btnLogJson" class="btn outline sm" type="button">JSON</button><button id="btnLogCsv" class="btn outline sm" type="button">CSV</button><button id="btnLogClear" class="btn outline sm" type="button">Clear</button></div>
+        </div>
+        <ul class="log" id="logList" aria-live="off"></ul>
+      </div>
+      <div class="tabpanel guide" id="panGuide" role="tabpanel" aria-labelledby="tabGuide" hidden>
+        <details open><summary>What this is (and is not)</summary><p>NeuroDish is a <b>computational simulation inspired by</b> neurons-in-a-dish experiments. The agent is a tabular Q-learning algorithm. The network drawn in the Neural activity panel is an <b>activity representation</b> of that agent; it does not learn and it is not a measurement of biological tissue.</p></details>
+        <details><summary>State representation (486 discrete states)</summary><ul><li><b>Approach</b>: ball moving toward / away from the paddle (2)</li><li><b>Intercept offset</b>: predicted ball y at the paddle plane minus paddle y, in 9 signed bins (≤12, ≤35, ≤80, ≤160, &gt;160 px) (9)</li><li><b>Time to contact</b>: &lt;0.5 s, 0.5–1.2 s, &gt;1.2 s (3)</li><li><b>Paddle zone</b> and <b>ball vertical zone</b>: top / middle / bottom (3 × 3)</li></ul><p>Actions: Up, Stay, Down.</p></details>
+        <details><summary>Reward function</summary><ul><li><b>Interception</b>: + reward magnitude. <b>Miss</b>: − penalty magnitude (terminal).</li><li><b>Shaping</b> (Reinforced only, optional): ±0.02 × normalized reduction of distance to the predicted intercept, and −0.002 for moving when already aligned. Small by design so it cannot outweigh the task reward.</li><li><b>Outcome-only</b>: the same task reward without shaping (sparse).</li><li><b>No reinforcement</b>: the policy runs but no value updates occur. Previously learned behavior is not erased.</li></ul><p>The update is Q(s,a) ← Q(s,a) + α[r + γ·maxₐ′ Q(s′,a′) − Q(s,a)], with the future term set to 0 on a miss. Episodes truncated by the rally cap still bootstrap.</p></details>
+        <details><summary>Metric definitions</summary><ul><li><b>Episode</b>: one rally; it ends at a miss or after the rally cap of returns.</li><li><b>Interceptions / misses</b>: ball arrivals at the paddle plane that were hit / missed.</li><li><b>Interception rate</b>: interceptions ÷ (interceptions + misses), shown as — until an attempt exists.</li><li><b>Recent rate</b>: same ratio over the last N episodes (rolling window).</li><li><b>Cumulative reward</b>: sum of task rewards (excluding shaping) in the selected dataset.</li><li><b>Exploration ε</b>: probability of a random action. Decays per training episode.</li><li><b>States visited / updates</b>: distinct states and total Q-updates applied.</li></ul><p>Training, evaluation and manual datasets are tracked separately.</p></details>
+        <details><summary>Audio is feedback, not an input</summary><p>The success tone and the noise burst are rendered for the observer. They are not fed to the agent, so muting them does not change learning. Reinforcement conditions change the numeric learning signal only.</p></details>
+        <details><summary>Evidence of learning</summary><p>A rising training curve alone is not proof: it mixes exploration with learning. Run a frozen-policy evaluation and a random-policy baseline on the same seed, then compare intervals in the Experiment sheet.</p></details>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div class="stack">
+  <section class="card o2" aria-labelledby="teTitle">
+    <div class="card-header">
+      <div><h2 id="teTitle" class="card-title">Telemetry</h2><p class="card-desc" id="teDesc">Training dataset</p></div>
+      <div class="row">
+        <div class="segmented" id="viewSeg" role="group" aria-label="Dataset"><button type="button" data-view="train" aria-pressed="true">Train</button><button type="button" data-view="eval" aria-pressed="false">Eval</button><button type="button" data-view="manual" aria-pressed="false">Manual</button></div>
+      </div>
+    </div>
+    <div class="card-content">
+      <dl class="stats">
+        <div class="stat" title="Current rally number (completed + 1)"><dt>Episode</dt><dd id="stEpisode">1</dd></div>
+        <div class="stat" title="Ball arrivals hit by the paddle"><dt>Interceptions</dt><dd id="stHits">0</dd></div>
+        <div class="stat" title="Ball arrivals missed"><dt>Misses</dt><dd id="stMisses">0</dd></div>
+        <div class="stat" title="Consecutive interceptions (best in brackets)"><dt>Streak</dt><dd id="stStreak">0</dd></div>
+        <div class="stat" title="Interceptions ÷ attempts, whole dataset"><dt>Overall rate</dt><dd id="stRate">—</dd></div>
+        <div class="stat" title="Interception rate over the last N episodes"><dt id="stRecentL">Recent rate</dt><dd id="stRecent">—</dd></div>
+        <div class="stat" title="Sum of task rewards (no shaping)"><dt>Cum. reward</dt><dd id="stReward">0</dd></div>
+        <div class="stat" title="Mean decisions per completed episode"><dt>Avg length</dt><dd id="stLen">—</dd></div>
+        <div class="stat" title="Probability of a random action"><dt>Exploration ε</dt><dd id="stEps">—</dd></div>
+        <div class="stat" style="grid-column:1/-1" title="Learning state of the agent"><dt>Status</dt><dd class="txt" id="stStatus">Idle</dd></div>
+      </dl>
+      <label class="switch-row" style="margin-top:8px"><span class="t">Advanced diagnostics<span class="d">Learning counters, Q-value map, agent perception</span></span><input type="checkbox" class="switch" id="swDiag" data-cfg="diagnostics"></label>
+      <div class="diag" id="diagBox" hidden>
+        <dl class="stats">
+          <div class="stat" title="Distinct states with at least one update"><dt>States visited</dt><dd id="stStates">0</dd></div>
+          <div class="stat" title="Total Q-value updates"><dt>Updates</dt><dd id="stUpdates">0</dd></div>
+          <div class="stat" title="Exponential mean of |TD error|"><dt>Mean |TD|</dt><dd id="stTd">0</dd></div>
+          <div class="stat" title="Average reward per episode over the window"><dt>Avg reward</dt><dd id="stAvgR">—</dd></div>
+          <div class="stat" title="Distinct state-action pairs updated"><dt>Pairs tried</dt><dd id="stPairs">0</dd></div>
+          <div class="stat" title="Exploratory fraction of recent decisions"><dt>Last action</dt><dd id="stAct" class="txt">—</dd></div>
+        </dl>
+        <div class="row" style="margin:12px 0 8px"><span class="label">Q-values by intercept offset</span><span class="grow" style="flex:1"></span>
+          <select id="qApproach" class="select inline" aria-label="Approach slice" style="height:30px;font-size:12px"><option value="1">Approaching</option><option value="0">Receding</option></select>
+          <select id="qTta" class="select inline" aria-label="Time-to-contact slice" style="height:30px;font-size:12px"><option value="0">&lt; 0.5 s</option><option value="1" selected>0.5–1.2 s</option><option value="2">&gt; 1.2 s</option></select></div>
+        <div class="panel-canvas"><canvas id="qmap" height="132" role="img" aria-label="Q-value heatmap"></canvas></div>
+        <p class="hint" style="margin-top:6px">Rows: Up / Stay / Down. Columns: target above → below the paddle. Outlined cell = greedy action; dim = unvisited.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="card o4" aria-labelledby="nnTitle">
+    <div class="card-header"><div><h2 id="nnTitle" class="card-title">Neural activity</h2><p class="card-desc">Activity representation of the Q-learning agent. It does not learn.</p></div></div>
+    <div class="card-content">
+      <div class="panel-canvas"><canvas id="neural" height="250" role="img" aria-label="Activity network: inputs, hidden units and action outputs"></canvas></div>
+      <div class="legend">
+        <span><i style="background:hsl(var(--signal))"></i>Excitatory flow</span>
+        <span><i style="background:hsl(var(--exp))"></i>Inhibitory flow</span>
+        <span><i style="background:hsl(var(--signal));opacity:.5"></i>Reward event</span>
+        <span><i style="background:hsl(var(--penalty))"></i>Penalty / negative TD</span>
+      </div>
+      <p class="hint" style="margin-top:8px" id="neuralInfo">Inputs and hidden units are a fixed, deterministic encoding of the observation. Output nodes show the agent's real Q-values; the ring marks the selected action.</p>
+    </div>
+  </section>
+
+  <section class="card o5" aria-label="Laboratory controls">
+    <div class="tabs-wrap" style="padding-top:12px">
+      <div class="tablist" role="tablist" data-tabs="bench">
+        <button role="tab" id="tabExp" aria-controls="panExp" aria-selected="true">Experiment</button>
+        <button role="tab" id="tabAgent" aria-controls="panAgent" aria-selected="false">Agent</button>
+        <button role="tab" id="tabAudio" aria-controls="panAudio" aria-selected="false">Audio</button>
+        <button role="tab" id="tabModel" aria-controls="panModel" aria-selected="false">Model</button>
+        <button role="tab" id="tabEval" aria-controls="panEval" aria-selected="false">Evaluate</button>
+      </div>
+
+      <div class="tabpanel" id="panExp" role="tabpanel" aria-labelledby="tabExp">
+        <div class="field"><label for="selCond">Experimental condition</label>
+          <select id="selCond" class="select" data-cfg="condition" data-lock="eval"><option value="reinforced">A · Reinforced (shaped reward)</option><option value="outcome">B · Outcome-only (sparse reward)</option><option value="none">C · No reinforcement (no updates)</option></select>
+          <p class="hint" id="condDesc"></p></div>
+        <div class="field"><div class="field-head"><label for="cfgBall">Ball speed</label><output data-out="ballSpeed"></output></div><input type="range" id="cfgBall" data-cfg="ballSpeed" data-lock="eval" min="250" max="900" step="10"></div>
+        <div class="field"><div class="field-head"><label for="cfgPad">Paddle speed</label><output data-out="paddleSpeed"></output></div><input type="range" id="cfgPad" data-cfg="paddleSpeed" data-lock="eval" min="200" max="900" step="10"></div>
+        <div class="field"><div class="field-head"><label for="cfgVar">Environmental variability</label><output data-out="variability"></output></div><input type="range" id="cfgVar" data-cfg="variability" data-lock="eval" min="0" max="1" step="0.05"></div>
+        <div class="grid2">
+          <div class="field"><div class="field-head"><label for="cfgRew">Reward</label><output data-out="rewardMag"></output></div><input type="range" id="cfgRew" data-cfg="rewardMag" min="0.1" max="5" step="0.1"></div>
+          <div class="field"><div class="field-head"><label for="cfgPen">Penalty</label><output data-out="penaltyMag"></output></div><input type="range" id="cfgPen" data-cfg="penaltyMag" min="0.1" max="10" step="0.1"></div>
+        </div>
+        <div class="field"><div class="field-head"><label for="cfgCap">Rally cap (returns per episode)</label><output data-out="rallyCap"></output></div><input type="range" id="cfgCap" data-cfg="rallyCap" min="1" max="30" step="1"></div>
+        <label class="switch-row"><span class="t">Reward shaping<span class="d">Small guidance toward the predicted intercept (condition A)</span></span><input type="checkbox" class="switch" data-cfg="shaping"></label>
+        <label class="switch-row"><span class="t">Learn from manual play<span class="d">Experimental: off-policy Q-updates from your moves</span></span><input type="checkbox" class="switch" data-cfg="learnFromManual"></label>
+        <hr class="sep">
+        <div class="field"><label for="seedInput">Random seed</label><div class="row" style="flex-wrap:nowrap"><input class="input" id="seedInput" type="number" min="0" max="2147483647" step="1" data-lock="eval"><button id="btnReseed" class="btn outline" type="button" data-lock="eval">Reseed</button></div><p class="hint">Reseeding restarts the environment and exploration streams; the learned model is kept.</p></div>
+      </div>
+
+      <div class="tabpanel" id="panAgent" role="tabpanel" aria-labelledby="tabAgent" hidden>
+        <div class="grid2">
+          <div class="field"><label for="cfgAlpha">Learning rate α</label><input class="input" id="cfgAlpha" type="number" data-cfg="alpha" min="0.01" max="1" step="0.01"></div>
+          <div class="field"><label for="cfgGamma">Discount γ</label><input class="input" id="cfgGamma" type="number" data-cfg="gamma" min="0" max="0.999" step="0.01"></div>
+          <div class="field"><label for="cfgEps0">Initial ε</label><input class="input" id="cfgEps0" type="number" data-cfg="eps0" min="0" max="1" step="0.05"></div>
+          <div class="field"><label for="cfgDecay">ε decay / episode</label><input class="input" id="cfgDecay" type="number" data-cfg="epsDecay" min="0.9" max="1" step="0.001"></div>
+          <div class="field"><label for="cfgMin">Minimum ε</label><input class="input" id="cfgMin" type="number" data-cfg="epsMin" min="0" max="0.5" step="0.01"></div>
+        </div>
+        <p class="hint">Initial ε applies on reset. Changes to α, γ, decay and minimum apply immediately. Lower decay values explore less, sooner.</p>
+        <div class="btn-row" style="margin-top:12px"><button id="btnEpsNow" class="btn outline sm" type="button" data-lock="eval">Set current ε to initial</button></div>
+      </div>
+
+      <div class="tabpanel" id="panAudio" role="tabpanel" aria-labelledby="tabAudio" hidden>
+        <label class="switch-row"><span class="t">Sound<span class="d">Master switch (starts after your first interaction)</span></span><input type="checkbox" class="switch" data-cfg="audioOn"></label>
+        <div class="field"><div class="field-head"><label for="cfgVol">Volume</label><output data-out="volume"></output></div><input type="range" id="cfgVol" data-cfg="volume" min="0" max="1" step="0.05"></div>
+        <label class="switch-row"><span class="t">Interception tone<span class="d">Soft harmonic chord</span></span><input type="checkbox" class="switch" data-cfg="soundHit"></label>
+        <label class="switch-row"><span class="t">Miss static<span class="d">Short filtered noise burst</span></span><input type="checkbox" class="switch" data-cfg="soundMiss"></label>
+        <label class="switch-row"><span class="t">Stimulation mode<span class="d">Quiet tick per decision (pitch = action)</span></span><input type="checkbox" class="switch" data-cfg="soundStim"></label>
+        <label class="switch-row"><span class="t">Learning cue<span class="d">Chime on a new best rolling rate or finished evaluation</span></span><input type="checkbox" class="switch" data-cfg="soundCue"></label>
+        <div class="btn-row" style="margin-top:8px"><button id="btnTestHit" class="btn outline sm" type="button">Test tone</button><button id="btnTestMiss" class="btn outline sm" type="button">Test static</button></div>
+        <p class="note" style="margin-top:12px">Audio is rendered for the observer only. It is not an input to the agent. Sounds are skipped above 4× speed.</p>
+      </div>
+
+      <div class="tabpanel" id="panModel" role="tabpanel" aria-labelledby="tabModel" hidden>
+        <p class="hint" id="modelInfo" style="margin-bottom:12px"></p>
+        <div class="btn-row">
+          <button id="btnSave" class="btn secondary" type="button" data-lock="eval">Save to browser</button>
+          <button id="btnLoad" class="btn secondary" type="button" data-lock="eval">Load saved</button>
+          <button id="btnExport" class="btn outline" type="button">Export JSON</button>
+          <button id="btnImport" class="btn outline" type="button" data-lock="eval">Import JSON</button>
+          <input type="file" id="fileImport" accept="application/json,.json" hidden>
+        </div>
+        <hr class="sep">
+        <button id="btnReset" class="btn destructive" type="button" data-lock="eval">Reset training</button>
+        <p class="hint" style="margin-top:8px">Clears the Q-table, training history and evaluations. Saved models in the browser are untouched.</p>
+      </div>
+
+      <div class="tabpanel" id="panEval" role="tabpanel" aria-labelledby="tabEval" hidden>
+        <p class="hint" style="margin-bottom:12px">Evaluation freezes the policy (no learning, no exploration) and runs fixed-seed episodes. Training metrics are not affected.</p>
+        <div class="grid2">
+          <div class="field"><div class="field-head"><label for="cfgEvN">Episodes</label><output data-out="evalEpisodes"></output></div><input type="range" id="cfgEvN" data-cfg="evalEpisodes" data-lock="eval" min="5" max="100" step="5"></div>
+          <div class="field"><label for="cfgEvSeed">Evaluation seed</label><input class="input" id="cfgEvSeed" type="number" data-cfg="evalSeed" data-lock="eval" min="0" max="2147483647" step="1"></div>
+          <div class="field"><label for="cfgEvCap">Returns / episode</label><input class="input" id="cfgEvCap" type="number" data-cfg="evalCap" data-lock="eval" min="1" max="10" step="1"></div>
+          <div class="field"><label for="selEvPol">Policy</label><select id="selEvPol" class="select" data-cfg="evalPolicy" data-lock="eval"><option value="agent">Trained agent (frozen)</option><option value="random">Random baseline</option></select></div>
+        </div>
+        <div class="btn-row"><button id="btnEvalRun" class="btn" type="button">Run evaluation</button><button id="btnEvalCancel" class="btn outline" type="button" disabled>Cancel</button></div>
+        <div class="progress" style="margin-top:12px" role="progressbar" aria-label="Evaluation progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="evalBar"><i id="evalFill"></i></div>
+        <hr class="sep">
+        <h3 class="label">Seed comparison</h3>
+        <p class="hint" style="margin:4px 0 12px">Trains two fresh agents headlessly with different seeds under the current condition and parameters, evaluating each periodically against a random baseline.</p>
+        <div class="grid2">
+          <div class="field"><label for="cmpA">Seed A</label><input class="input" id="cmpA" type="number" data-cfg="cmpSeedA" min="0" max="2147483647" step="1"></div>
+          <div class="field"><label for="cmpB">Seed B</label><input class="input" id="cmpB" type="number" data-cfg="cmpSeedB" min="0" max="2147483647" step="1"></div>
+        </div>
+        <div class="field"><div class="field-head"><label for="cmpN">Training episodes</label><output data-out="cmpEpisodes"></output></div><input type="range" id="cmpN" data-cfg="cmpEpisodes" min="100" max="1000" step="50"></div>
+        <div class="btn-row"><button id="btnCmp" class="btn secondary" type="button">Run comparison</button><button id="btnCmpCancel" class="btn outline" type="button" disabled>Cancel</button></div>
+        <div class="progress" style="margin-top:12px" id="cmpBar" role="progressbar" aria-label="Comparison progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i id="cmpFill"></i></div>
+        <div class="panel-canvas" style="margin-top:12px"><canvas id="cmpChart" height="190" role="img" aria-label="Seed comparison chart"></canvas></div>
+        <p class="hint" id="cmpInfo" style="margin-top:6px">Frozen-policy interception rate vs. training episodes.</p>
+      </div>
+    </div>
+  </section>
+</div>
+</main>
+
+<dialog id="introDlg" aria-labelledby="introTitle">
+  <div class="dlg">
+    <p class="eyebrow">NEURODISH</p>
+    <h2 id="introTitle">An artificial neural learning experiment</h2>
+    <ol>
+      <li><b>Observe</b> an untrained agent trying to intercept a ball.</li>
+      <li><b>Start training</b> and let reinforcement shape its policy.</li>
+      <li><b>Watch</b> activity signals and performance change.</li>
+      <li><b>Evaluate</b> the frozen policy against a random baseline.</li>
+      <li><b>Compare</b> conditions, seeds and reward settings.</li>
+    </ol>
+    <p class="note">This is a computational simulation inspired by neuroscience. The nodes and synapse-like lines are a visualization of an artificial agent's computations, not measurements of biological neurons.</p>
+    <div class="actions"><button class="btn outline" type="button" id="introLater">Explore first</button><button class="btn lg" type="button" id="introStart">Start Experiment</button></div>
+  </div>
+</dialog>
+
+<dialog id="confirmDlg" aria-labelledby="cfTitle">
+  <form method="dialog" class="dlg">
+    <h2 id="cfTitle" style="font-size:16px"></h2>
+    <p class="muted" id="cfText" style="margin-top:8px;font-size:13px"></p>
+    <div class="actions"><button class="btn outline" value="cancel" id="cfCancel">Cancel</button><button class="btn" value="ok" id="cfOk">Confirm</button></div>
+  </form>
+</dialog>
+<div id="toasts" role="status" aria-live="polite"></div>
+<script>
+(() => {
+'use strict';
+
+/* =====================================================================
+ * Constants
+ * ===================================================================== */
+const FIELD_W = 800, FIELD_H = 500;
+const DT = 1 / 120;                 // fixed physics step (s)
+const DECISION_STEPS = 4;           // agent acts every 4 physics steps (30 Hz)
+const DECISION_DT = DT * DECISION_STEPS;
+const N_ACTIONS = 3;                // 0 up, 1 stay, 2 down
+const N_STATES = 2 * 9 * 3 * 3 * 3; // approach × offset × time-to-contact × paddle zone × ball zone
+const STATE_SIGNATURE = 'ap2-d9-t3-pz3-bz3';
+const ACTION_NAMES = ['Up', 'Stay', 'Down'];
+const SHAPE_W = 0.02, MOVE_PENALTY = 0.002, CENTER_PX = 12, MAX_EP_STEPS = 6000;
+const F = { DECISION: 1, HIT: 2, MISS: 4, EPISODE_END: 8, NEW_EPISODE: 16 };
+const MODEL_KEY = 'neurodish.model.v1';
+const COND_LABEL = { reinforced: 'Reinforced', outcome: 'Outcome-only', none: 'No reinforcement' };
+const COND_DESC = {
+  reinforced: 'Reward and penalty plus small shaping toward the predicted intercept are applied to the Q-table.',
+  outcome: 'Only the task reward (interception) and penalty (miss) update the Q-table. No shaping.',
+  none: 'The environment runs and the existing policy acts, but no value updates occur. Previously learned behavior is kept.'
+};
+
+const DEFAULTS = Object.freeze({
+  speed: '1', condition: 'reinforced', ballSpeed: 480, paddleSpeed: 460, variability: 0.35,
+  rewardMag: 1, penaltyMag: 2, shaping: true, rallyCap: 6, learnFromManual: false,
+  alpha: 0.2, gamma: 0.95, eps0: 1, epsDecay: 0.985, epsMin: 0.03,
+  window: 100, chartMetric: 'rate', diagnostics: false, verbose: false,
+  audioOn: true, volume: 0.5, soundHit: true, soundMiss: true, soundStim: false, soundCue: true,
+  evalEpisodes: 20, evalSeed: 1234, evalCap: 3, evalPolicy: 'agent',
+  cmpSeedA: 1, cmpSeedB: 2, cmpEpisodes: 300, seed: 42
+});
+const RULES = {
+  speed: ['enum', ['1', '2', '4', '8', '16', '32', 'max']],
+  condition: ['enum', ['reinforced', 'outcome', 'none']],
+  chartMetric: ['enum', ['rate', 'reward']], evalPolicy: ['enum', ['agent', 'random']],
+  window: ['enum', ['25', '50', '100', '200']],
+  ballSpeed: ['num', 250, 900], paddleSpeed: ['num', 200, 900], variability: ['num', 0, 1],
+  rewardMag: ['num', 0.1, 5], penaltyMag: ['num', 0.1, 10], rallyCap: ['int', 1, 30],
+  alpha: ['num', 0.01, 1], gamma: ['num', 0, 0.999], eps0: ['num', 0, 1], epsDecay: ['num', 0.9, 1], epsMin: ['num', 0, 0.5],
+  volume: ['num', 0, 1], evalEpisodes: ['int', 5, 200], evalSeed: ['int', 0, 2147483647], evalCap: ['int', 1, 10],
+  cmpSeedA: ['int', 0, 2147483647], cmpSeedB: ['int', 0, 2147483647], cmpEpisodes: ['int', 100, 1000], seed: ['int', 0, 2147483647]
+};
+const BOOLS = ['shaping', 'learnFromManual', 'diagnostics', 'verbose', 'audioOn', 'soundHit', 'soundMiss', 'soundStim', 'soundCue'];
+
+function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
+function sanitize(key, value) {
+  const rule = RULES[key];
+  if (BOOLS.includes(key)) return !!value;
+  if (!rule) return value;
+  if (rule[0] === 'enum') { const s = String(value); return rule[1].includes(s) ? (key === 'window' ? Number(s) : s) : (key === 'window' ? Number(DEFAULTS[key]) : DEFAULTS[key]); }
+  let n = Number(value);
+  if (!Number.isFinite(n)) return DEFAULTS[key];
+  n = clamp(n, rule[1], rule[2]);
+  return rule[0] === 'int' ? Math.round(n) : n;
+}
+const fmtPct = x => (x == null || !Number.isFinite(x)) ? '—' : (x * 100).toFixed(1) + '%';
+const fmtNum = (x, d = 2) => (x == null || !Number.isFinite(x)) ? '—' : x.toFixed(d);
+const fmtInt = n => Number.isFinite(n) ? Math.round(n).toLocaleString('en-US') : '—';
+function wilson(h, n) {
+  if (!n) return null;
+  const z = 1.96, p = h / n, d = 1 + z * z / n, c = p + z * z / (2 * n), m = z * Math.sqrt(p * (1 - p) / n + z * z / (4 * n * n));
+  return [Math.max(0, (c - m) / d), Math.min(1, (c + m) / d)];
+}
+
+/* Seeded PRNG (mulberry32) with inspectable state */
+class Rng {
+  constructor(seed) { this.s = (seed >>> 0) || 0x9e3779b9; }
+  next() { let t = (this.s = (this.s + 0x6D2B79F5) >>> 0); t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }
+  range(a, b) { return a + (b - a) * this.next(); }
+  int(n) { return Math.floor(this.next() * n); }
+}
+
+/* =====================================================================
+ * GameEngine — Pong-like physics. Field coordinates are 800×500;
+ * the agent's paddle sits on the right, the left wall reflects the ball.
+ * ===================================================================== */
+class GameEngine {
+  constructor(rng, params) {
+    this.rng = rng; this.p = params;
+    this.paddle = { x: FIELD_W - 36, y: FIELD_H / 2, w: 10, h: 92, vy: 0 };
+    this.ball = { x: 200, y: FIELD_H / 2, vx: 0, vy: 0, r: 8, alive: false };
+    this.wallX = 26;
+    this.faceX = this.paddle.x - this.paddle.w / 2;
+    this.returns = 0; this.hitOffset = 0; this.hitY = 0; this.missY = 0;
+    this.pred = { y: 0, t: 0 };
+  }
+  reset() { this.paddle.y = FIELD_H / 2; this.paddle.vy = 0; this.serve(); }
+  serve() {
+    const b = this.ball, v = this.p.variability;
+    const maxAng = (12 + 36 * v) * Math.PI / 180;
+    const ang = this.rng.range(-maxAng, maxAng);
+    b.x = this.wallX + 70 + this.rng.range(0, 20 + 90 * v);
+    b.y = this.rng.range(FIELD_H * 0.18, FIELD_H * 0.82);
+    b.vx = Math.cos(ang) * this.p.ballSpeed; b.vy = Math.sin(ang) * this.p.ballSpeed;
+    b.alive = true; this.returns = 0;
+  }
+  /** Rescale velocity to ballSpeed and keep a minimum horizontal component. */
+  normalize() {
+    const b = this.ball, s = this.p.ballSpeed, len = Math.hypot(b.vx, b.vy) || 1;
+    b.vx *= s / len; b.vy *= s / len;
+    const minVx = 0.35 * s;
+    if (Math.abs(b.vx) < minVx) { b.vy = (b.vy < 0 ? -1 : 1) * Math.sqrt(s * s - minVx * minVx); b.vx = (b.vx < 0 ? -1 : 1) * minVx; }
+  }
+  jitter() {
+    const v = this.p.variability; if (v <= 0) return;
+    const a = this.rng.range(-1, 1) * v * 0.045, c = Math.cos(a), s = Math.sin(a), b = this.ball;
+    const vx = b.vx * c - b.vy * s; b.vy = b.vx * s + b.vy * c; b.vx = vx; this.normalize();
+  }
+  /** Advance one physics step. dir ∈ [-1,1] paddle command. Returns 0 none, 1 hit, 2 miss. */
+  step(dt, dir) {
+    const p = this.paddle, b = this.ball, half = p.h / 2;
+    const old = p.y; let ny = old + dir * this.p.paddleSpeed * dt;
+    ny = clamp(ny, half + 6, FIELD_H - half - 6); p.y = ny; p.vy = (ny - old) / dt;
+    const px = b.x, py = b.y;
+    b.x += b.vx * dt; b.y += b.vy * dt;
+    if (!b.alive) return 0;
+    if (b.y < b.r) { b.y = 2 * b.r - b.y; b.vy = Math.abs(b.vy); }
+    else if (b.y > FIELD_H - b.r) { b.y = 2 * (FIELD_H - b.r) - b.y; b.vy = -Math.abs(b.vy); }
+    if (b.x < this.wallX + b.r) { b.x = 2 * (this.wallX + b.r) - b.x; b.vx = Math.abs(b.vx); this.jitter(); }
+    // Swept test against the paddle's front face: no tunneling at any supported speed.
+    if (b.vx > 0 && px + b.r <= this.faceX && b.x + b.r > this.faceX) {
+      const f = (this.faceX - (px + b.r)) / ((b.x - px) || 1e-9);
+      const yAt = py + (b.y - py) * f;
+      if (Math.abs(yAt - p.y) <= half + b.r * 0.5) {
+        const off = clamp((yAt - p.y) / half, -1, 1);
+        const ang = clamp(off * 0.9 + clamp(p.vy / this.p.paddleSpeed, -1, 1) * 0.15, -1.0, 1.0);
+        b.vx = -Math.cos(ang) * this.p.ballSpeed; b.vy = Math.sin(ang) * this.p.ballSpeed;
+        b.x = this.faceX - b.r - 0.01; b.y = yAt;
+        this.returns++; this.hitOffset = off; this.hitY = yAt;
+        return 1;
+      }
+      b.alive = false; this.missY = yAt; return 2;
+    }
+    return 0;
+  }
+  /** Analytic prediction of ball y at the paddle plane (unfolding wall reflections) and time to get there. */
+  predict() {
+    const b = this.ball, pr = this.pred;
+    if (!b.alive) { pr.y = b.y; pr.t = 9; return pr; }
+    const reach = this.faceX - b.r, left = this.wallX + b.r;
+    const dx = b.vx > 0 ? reach - b.x : (b.x - left) + (reach - left);
+    const t = dx / Math.max(Math.abs(b.vx), 1e-6);
+    const lo = b.r, span = FIELD_H - 2 * b.r;
+    let u = (b.y + b.vy * t - lo) % (2 * span); if (u < 0) u += 2 * span; if (u > span) u = 2 * span - u;
+    pr.y = lo + u; pr.t = t; return pr;
+  }
+}
+
+/* =====================================================================
+ * State encoder — discretizes the observation into one of N_STATES.
+ * ===================================================================== */
+function makeObs() { return { s: 0, d: 0, t: 0, approach: 0, by: 0.5, py: 0.5, vyn: 0, dBin: 4, tBin: 0, pz: 1, bz: 1 }; }
+function encodeState(e, o) {
+  const pr = e.predict(), b = e.ball, d = pr.y - e.paddle.y, ad = Math.abs(d);
+  const m = ad < 12 ? 0 : ad < 35 ? 1 : ad < 80 ? 2 : ad < 160 ? 3 : 4;
+  const dBin = d < 0 ? 4 - m : 4 + m;
+  const approach = b.alive && b.vx > 0 ? 1 : 0;
+  const tBin = pr.t < 0.5 ? 0 : pr.t < 1.2 ? 1 : 2;
+  const py = e.paddle.y / FIELD_H, by = b.y / FIELD_H;
+  const pz = py < 0.3 ? 0 : py > 0.7 ? 2 : 1, bz = by < 0.3 ? 0 : by > 0.7 ? 2 : 1;
+  o.d = d; o.t = pr.t; o.approach = approach; o.by = by; o.py = py; o.vyn = b.vy / (e.p.ballSpeed || 1);
+  o.dBin = dBin; o.tBin = tBin; o.pz = pz; o.bz = bz;
+  o.s = (((approach * 9 + dBin) * 3 + tBin) * 3 + pz) * 3 + bz;
+  return o;
+}
+
+/* =====================================================================
+ * ReinforcementLearningAgent — tabular epsilon-greedy Q-learning.
+ * ===================================================================== */
+class ReinforcementLearningAgent {
+  constructor(params) {
+    this.params = params;
+    this.q = new Float32Array(N_STATES * N_ACTIONS);
+    this.visits = new Uint32Array(N_STATES * N_ACTIONS);
+    this.stateUpdates = new Uint32Array(N_STATES);
+    this.reset();
+  }
+  reset() {
+    this.q.fill(0); this.visits.fill(0); this.stateUpdates.fill(0);
+    this.epsilon = this.params.eps0; this.updates = 0; this.statesVisited = 0; this.pairsTried = 0;
+    this.episodes = 0; this.tdEma = 0; this.explored = false;
+    this.condEpisodes = { reinforced: 0, outcome: 0, none: 0 };
+  }
+  selectAction(s, explore, rng) {
+    if (explore && rng.next() < this.epsilon) { this.explored = true; return rng.int(N_ACTIONS); }
+    this.explored = false; return this.greedy(s, explore ? rng : null);
+  }
+  /** Greedy action; ties are random when an rng is given, otherwise Stay > Up > Down (deterministic). */
+  greedy(s, rng) {
+    const i = s * 3, q = this.q, best = Math.max(q[i], q[i + 1], q[i + 2]);
+    const t0 = q[i] >= best - 1e-9, t1 = q[i + 1] >= best - 1e-9, t2 = q[i + 2] >= best - 1e-9;
+    const n = (t0 ? 1 : 0) + (t1 ? 1 : 0) + (t2 ? 1 : 0);
+    if (n === 1) return t0 ? 0 : t1 ? 1 : 2;
+    if (!rng) return t1 ? 1 : t0 ? 0 : 2;
+    let k = rng.int(n);
+    if (t0 && k-- === 0) return 0;
+    if (t1 && k-- === 0) return 1;
+    return 2;
+  }
+  maxQ(s) { const i = s * 3, q = this.q; return Math.max(q[i], q[i + 1], q[i + 2]); }
+  /** Q(s,a) ← Q(s,a) + α[r + γ·max Q(s′,·) − Q(s,a)]; the bootstrap term is dropped for terminal transitions. */
+  update(s, a, r, s2, terminal) {
+    const i = s * 3 + a, target = r + (terminal ? 0 : this.params.gamma * this.maxQ(s2));
+    const td = target - this.q[i];
+    this.q[i] += this.params.alpha * td;
+    if (this.visits[i]++ === 0) this.pairsTried++;
+    if (this.stateUpdates[s]++ === 0) this.statesVisited++;
+    this.updates++; this.tdEma += 0.005 * (Math.abs(td) - this.tdEma);
+    return td;
+  }
+  decayEpsilon() { this.epsilon = Math.max(this.params.epsMin, this.epsilon * this.params.epsDecay); }
+  serialize(meta) {
+    return {
+      app: 'neurodish', kind: 'q-table', version: 1, createdAt: new Date().toISOString(),
+      stateSpace: { signature: STATE_SIGNATURE, nStates: N_STATES, nActions: N_ACTIONS, actions: ['up', 'stay', 'down'] },
+      hyper: { alpha: this.params.alpha, gamma: this.params.gamma, eps0: this.params.eps0, epsDecay: this.params.epsDecay, epsMin: this.params.epsMin },
+      progress: { epsilon: this.epsilon, updates: this.updates, episodes: this.episodes, statesVisited: this.statesVisited, condEpisodes: this.condEpisodes, meta: meta || {} },
+      q: Array.from(this.q, v => Math.round(v * 1e5) / 1e5), visits: Array.from(this.visits)
+    };
+  }
+  /** Validates untrusted model data; returns {ok, error}. */
+  static validate(o) {
+    const bad = m => ({ ok: false, error: m });
+    if (!o || typeof o !== 'object' || Array.isArray(o)) return bad('File is not a model object.');
+    if (o.app !== 'neurodish' || o.kind !== 'q-table') return bad('Not a NeuroDish Q-table model.');
+    if (o.version !== 1) return bad('Unsupported model version.');
+    const ss = o.stateSpace;
+    if (!ss || ss.signature !== STATE_SIGNATURE || ss.nStates !== N_STATES || ss.nActions !== N_ACTIONS) return bad('State space is incompatible with this version.');
+    const n = N_STATES * N_ACTIONS;
+    if (!Array.isArray(o.q) || o.q.length !== n || !Array.isArray(o.visits) || o.visits.length !== n) return bad('Q-table has the wrong size.');
+    for (let i = 0; i < n; i++) {
+      const v = o.q[i], c = o.visits[i];
+      if (typeof v !== 'number' || !Number.isFinite(v) || Math.abs(v) > 1000) return bad('Q-table contains invalid values.');
+      if (!Number.isInteger(c) || c < 0 || c > 4e9) return bad('Visit counts are invalid.');
+    }
+    const p = o.progress, h = o.hyper;
+    if (!p || typeof p.epsilon !== 'number' || !(p.epsilon >= 0 && p.epsilon <= 1)) return bad('Exploration value is invalid.');
+    for (const k of ['updates', 'episodes']) if (!Number.isInteger(p[k]) || p[k] < 0) return bad('Progress counters are invalid.');
+    if (!h || typeof h !== 'object') return bad('Hyperparameters are missing.');
+    for (const k of ['alpha', 'gamma', 'eps0', 'epsDecay', 'epsMin']) {
+      const r = RULES[k]; if (typeof h[k] !== 'number' || !Number.isFinite(h[k]) || h[k] < r[1] || h[k] > r[2]) return bad('Hyperparameter "' + k + '" is out of range.');
+    }
+    return { ok: true };
+  }
+  restore(o) {
+    this.q.set(o.q); this.visits.set(o.visits);
+    this.stateUpdates.fill(0); this.statesVisited = 0; this.pairsTried = 0;
+    for (let s = 0; s < N_STATES; s++) {
+      let t = 0; for (let a = 0; a < 3; a++) { const c = o.visits[s * 3 + a]; t += c; if (c > 0) this.pairsTried++; }
+      this.stateUpdates[s] = Math.min(t, 4e9); if (t > 0) this.statesVisited++;
+    }
+    this.epsilon = o.progress.epsilon; this.updates = o.progress.updates; this.episodes = o.progress.episodes; this.tdEma = 0;
+    const ce = o.progress.condEpisodes || {};
+    this.condEpisodes = { reinforced: ce.reinforced | 0, outcome: ce.outcome | 0, none: ce.none | 0 };
+  }
+}
+
+/* =====================================================================
+ * Rollout — runs the decision/learning loop for one environment.
+ * Pure logic (no DOM) so it is reused by the live view and headless runs.
+ * ===================================================================== */
+class Rollout {
+  constructor(cfg, engine, agent) {
+    this.cfg = cfg; this.engine = engine; this.agent = agent; this.rng = new Rng(1);
+    this.policy = 'agent'; this.learn = false; this.explore = false; this.shaped = false; this.cap = 0; this.rest = 0.35;
+    this.obs = makeObs(); this.obs2 = makeObs();
+    this.manual = { up: false, down: false, targetY: null };
+    this.lastEpisode = { hits: 0, terminal: false, reward: 0, length: 0 };
+    this.hardReset();
+  }
+  hardReset() {
+    this.engine.reset(); this.phase = 0; this.restLeft = 0; this.decisions = 0;
+    this.lastTD = 0; this.lastReward = 0; this.action = 1; this.explored = false;
+    this.beginEpisode(false);
+  }
+  beginEpisode(serve = true) {
+    if (serve) this.engine.serve();
+    this.phase = 0; this.substep = 0; this.rewardAcc = 0; this.hitInInterval = false; this.terminal = false;
+    this.epReward = 0; this.epSteps = 0; this.epHits = 0;
+    encodeState(this.engine, this.obs);
+  }
+  /** Discard the partial episode (not recorded) and start a fresh serve. */
+  resetEpisode() { this.beginEpisode(true); }
+  manualDir() {
+    const m = this.manual, e = this.engine;
+    if (m.up !== m.down) return m.up ? -1 : 1;
+    if (m.targetY != null) return clamp((m.targetY - e.paddle.y) / (this.cfg.paddleSpeed * DT * 3), -1, 1);
+    return 0;
+  }
+  beginDecision() {
+    const o = encodeState(this.engine, this.obs);
+    this.dBefore = Math.abs(o.d);
+    if (this.policy === 'manual') { const d = this.manualDir(); this.action = d < -0.3 ? 0 : d > 0.3 ? 2 : 1; this.explored = false; }
+    else if (this.policy === 'random') { this.action = this.rng.int(N_ACTIONS); this.explored = true; }
+    else { this.action = this.agent.selectAction(o.s, this.explore, this.rng); this.explored = this.agent.explored; }
+  }
+  /** One physics step; returns an F.* bit mask. */
+  step() {
+    const e = this.engine; let flags = 0;
+    if (this.phase === 1) {
+      e.step(DT, 0); this.restLeft -= DT;
+      if (this.restLeft <= 0) { this.beginEpisode(true); flags |= F.NEW_EPISODE; }
+      return flags;
+    }
+    if (this.substep === 0) { this.beginDecision(); flags |= F.DECISION; }
+    const ev = e.step(DT, this.policy === 'manual' ? this.manualDir() : this.action - 1);
+    this.substep++;
+    if (ev === 1) { this.rewardAcc += this.cfg.rewardMag; this.hitInInterval = true; this.epHits++; flags |= F.HIT; }
+    else if (ev === 2) { this.rewardAcc -= this.cfg.penaltyMag; this.terminal = true; flags |= F.MISS; }
+    if (this.substep >= DECISION_STEPS || this.terminal) flags |= this.endDecision();
+    return flags;
+  }
+  endDecision() {
+    const e = this.engine, terminal = this.terminal; let flags = 0;
+    const o2 = encodeState(e, this.obs2);
+    let learnR = this.rewardAcc;
+    if (this.shaped && !terminal && !this.hitInInterval) {
+      learnR += SHAPE_W * clamp((this.dBefore - Math.abs(o2.d)) / (this.cfg.paddleSpeed * DECISION_DT), -1, 1);
+      if (this.action !== 1 && this.dBefore < CENTER_PX) learnR -= MOVE_PENALTY;
+    }
+    this.epReward += this.rewardAcc; this.epSteps++; this.decisions++;
+    this.lastTD = this.learn ? this.agent.update(this.obs.s, this.action, learnR, o2.s, terminal) : 0;
+    this.lastReward = learnR;
+    this.substep = 0; this.rewardAcc = 0; this.hitInInterval = false;
+    const truncated = !terminal && ((this.cap > 0 && this.epHits >= this.cap) || this.epSteps >= MAX_EP_STEPS);
+    if (terminal || truncated) {
+      const le = this.lastEpisode; le.hits = this.epHits; le.terminal = terminal; le.reward = this.epReward; le.length = this.epSteps;
+      flags |= F.EPISODE_END;
+      if (terminal) {
+        if (this.rest > 0) { this.phase = 1; this.restLeft = this.rest; this.terminal = false; }
+        else { this.beginEpisode(true); flags |= F.NEW_EPISODE; }
+      } else { this.epReward = 0; this.epSteps = 0; this.epHits = 0; }
+    }
+    return flags;
+  }
+}
+
+/** Headless frozen-policy evaluation (same code path as the live evaluation). */
+function runEval(agent, cfgSnap, seed, episodes, policy, cap) {
+  const eng = new GameEngine(new Rng(seed), cfgSnap), r = new Rollout(cfgSnap, eng, agent);
+  r.rng = new Rng((seed ^ 0x9e3779b1) >>> 0); r.policy = policy; r.learn = false; r.explore = false; r.shaped = false; r.cap = cap; r.rest = 0;
+  r.hardReset();
+  let done = 0, hits = 0, misses = 0, guard = 0;
+  while (done < episodes && guard++ < 5e7) {
+    const f = r.step();
+    if (f & F.HIT) hits++;
+    if (f & F.MISS) misses++;
+    if (f & F.EPISODE_END) done++;
+  }
+  return { hits, misses };
+}
+
+/* =====================================================================
+ * ExperimentMetrics — bounded statistics for one dataset.
+ * ===================================================================== */
+class ExperimentMetrics {
+  constructor() { this.RING = 256; this.reset(); }
+  reset() {
+    this.hits = 0; this.misses = 0; this.episodes = 0; this.decisions = 0; this.cumReward = 0; this.streak = 0; this.bestStreak = 0;
+    this.eH = new Uint16Array(this.RING); this.eM = new Uint8Array(this.RING); this.eR = new Float32Array(this.RING); this.eL = new Uint16Array(this.RING);
+    this.history = []; this.stride = 1; this.firstAtt = 0; this.firstHits = 0; this.bestRate = 0;
+  }
+  addAttempt(hit) {
+    if (hit) { this.hits++; this.streak++; if (this.streak > this.bestStreak) this.bestStreak = this.streak; } else { this.misses++; this.streak = 0; }
+    if (this.firstAtt < 50) { this.firstAtt++; if (hit) this.firstHits++; }
+  }
+  addEpisode(hits, missed, reward, length, cond) {
+    const i = this.episodes % this.RING;
+    this.eH[i] = Math.min(hits, 65535); this.eM[i] = missed ? 1 : 0; this.eR[i] = reward; this.eL[i] = Math.min(length, 65535);
+    this.episodes++; this.decisions += length; this.cumReward += reward;
+    if (this.episodes % this.stride === 0) {
+      this.history.push({ ep: this.episodes, cH: this.hits, cA: this.hits + this.misses, cR: this.cumReward, cond });
+      if (this.history.length > 3000) { this.history = this.history.filter((_, k) => k % 2 === 1); this.stride *= 2; }
+    }
+  }
+  get attempts() { return this.hits + this.misses; }
+  get overallRate() { return this.attempts ? this.hits / this.attempts : null; }
+  /** Rate / mean reward / mean length over the last w completed episodes. */
+  recent(w) {
+    const n = Math.min(w, this.episodes, this.RING); if (!n) return { rate: null, reward: null, len: null, n: 0 };
+    let h = 0, m = 0, r = 0, l = 0;
+    for (let k = 1; k <= n; k++) { const i = (this.episodes - k) % this.RING; h += this.eH[i]; m += this.eM[i]; r += this.eR[i]; l += this.eL[i]; }
+    return { rate: (h + m) ? h / (h + m) : null, reward: r / n, len: l / n, n };
+  }
+}
+
+/* =====================================================================
+ * Theme colors for canvases (read from CSS tokens)
+ * ===================================================================== */
+const Theme = {
+  v: {},
+  read() {
+    const cs = getComputedStyle(document.documentElement);
+    for (const k of ['foreground', 'muted-foreground', 'border', 'signal', 'penalty', 'exp', 'card', 'muted']) this.v[k] = cs.getPropertyValue('--' + k).trim().split(/\s+/);
+  },
+  c(name, a = 1) { const p = this.v[name]; return p && p.length >= 3 ? `hsla(${p[0]},${p[1]},${p[2]},${a})` : `rgba(128,128,128,${a})`; }
+};
+function setupCanvas(canvas, cssH) {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2), w = Math.max(1, Math.round(canvas.clientWidth));
+  const h = cssH || Math.max(1, Math.round(canvas.clientHeight));
+  canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr);
+  canvas.style.height = h + 'px';
+  const ctx = canvas.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return { ctx, w, h };
+}
+function roundRectPath(ctx, x, y, w, h, r) {
+  r = Math.min(r, w / 2, h / 2); ctx.beginPath(); ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+}
+
+/* =====================================================================
+ * NeuralActivityModel — activity representation of the Q-learning agent.
+ * Layer 1: 8 normalized observation signals. Layer 2: 12 units with a fixed,
+ * seeded projection (tanh, rectified). Layer 3: the agent's actual Q-values
+ * through a softmax, plus the selected action. Nothing here learns.
+ * ===================================================================== */
+const IN_LABELS = ['Approach', 'Urgency', 'Target above', 'Target below', 'Aligned', 'Ball y', 'Paddle y', 'Ball |vy|'];
+class NeuralActivityModel {
+  constructor(seed) {
+    const r = new Rng(seed); this.nIn = 8; this.nHid = 12; this.nOut = 3;
+    this.w1 = new Float32Array(this.nHid * this.nIn).map(() => r.range(-1, 1) * 1.5);
+    this.b1 = new Float32Array(this.nHid).map(() => r.range(-0.3, 0.3));
+    this.w2 = new Float32Array(this.nOut * this.nHid).map(() => r.range(-1, 1));
+    this.x = new Float32Array(8); this.h = new Float32Array(12); this.o = new Float32Array(3); this.q = new Float32Array(3);
+    this.dx = new Float32Array(8); this.dh = new Float32Array(12); this.do_ = new Float32Array(3);
+    this.selected = 1; this.td = 0; this.lastDecision = -1; this.selPulse = 0; this.flash = 0; this.flashKind = 0;
+    this.pulses = Array.from({ length: 80 }, () => ({ on: false, layer: 0, a: 0, b: 0, t: 0, str: 0, sign: 1 }));
+    this.contrib = new Float32Array(96);
+  }
+  /** Recompute activations from the latest decision; optionally launch signal pulses. */
+  update(obs, qRow, action, td, spawn) {
+    const x = this.x;
+    x[0] = obs.approach; x[1] = clamp(1 - obs.t / 1.5, 0, 1); x[2] = clamp(-obs.d / 150, 0, 1); x[3] = clamp(obs.d / 150, 0, 1);
+    x[4] = clamp(1 - Math.abs(obs.d) / 80, 0, 1); x[5] = obs.by; x[6] = obs.py; x[7] = clamp(Math.abs(obs.vyn), 0, 1);
+    for (let j = 0; j < 12; j++) {
+      let s = this.b1[j]; for (let i = 0; i < 8; i++) s += this.w1[j * 8 + i] * x[i];
+      this.h[j] = Math.max(0, Math.tanh(s));
+    }
+    let m = -Infinity; for (let k = 0; k < 3; k++) { this.q[k] = qRow[k]; if (qRow[k] > m) m = qRow[k]; }
+    let z = 0; for (let k = 0; k < 3; k++) { this.o[k] = Math.exp((qRow[k] - m) / 0.3); z += this.o[k]; }
+    for (let k = 0; k < 3; k++) this.o[k] /= z;
+    this.selected = action; this.td = td; this.selPulse = 1;
+    if (spawn) this.spawnPulses();
+  }
+  addPulse(layer, a, b, str, sign, delay) {
+    for (const p of this.pulses) if (!p.on) { p.on = true; p.layer = layer; p.a = a; p.b = b; p.t = -delay; p.str = str; p.sign = sign; return; }
+  }
+  spawnPulses() {
+    const c = this.contrib;
+    for (let j = 0; j < 12; j++) for (let i = 0; i < 8; i++) c[j * 8 + i] = this.w1[j * 8 + i] * this.x[i];
+    for (let n = 0; n < 9; n++) {
+      let bi = -1, bv = 0.25;
+      for (let k = 0; k < 96; k++) if (Math.abs(c[k]) > bv) { bv = Math.abs(c[k]); bi = k; }
+      if (bi < 0) break;
+      this.addPulse(0, bi % 8, (bi / 8) | 0, Math.min(1, bv), c[bi] >= 0 ? 1 : -1, 0); c[bi] = 0;
+    }
+    const k = this.selected;
+    for (let j = 0; j < 12; j++) if (this.h[j] > 0.3) this.addPulse(1, j, k, this.h[j], this.w2[k * 12 + j] >= 0 ? 1 : -1, 0.45);
+  }
+  react(kind) { this.flash = 1; this.flashKind = kind; }
+  /** Advance smoothing, pulses and flash by dt seconds. */
+  tick(dt) {
+    const f = 1 - Math.exp(-dt * 14);
+    for (let i = 0; i < 8; i++) this.dx[i] += (this.x[i] - this.dx[i]) * f;
+    for (let i = 0; i < 12; i++) this.dh[i] += (this.h[i] - this.dh[i]) * f;
+    for (let i = 0; i < 3; i++) this.do_[i] += (this.o[i] - this.do_[i]) * f;
+    this.selPulse = Math.max(0, this.selPulse - dt * 2.2); this.flash = Math.max(0, this.flash - dt * 1.8);
+    for (const p of this.pulses) if (p.on) { p.t += dt / 0.4; if (p.t >= 1) p.on = false; }
+  }
+  get animating() { return this.selPulse > 0 || this.flash > 0 || this.pulses.some(p => p.on); }
+}
+
+/* =====================================================================
+ * AudioEngine — Web Audio synthesis, no external files.
+ * ===================================================================== */
+class AudioEngine {
+  constructor(cfg) { this.cfg = cfg; this.ctx = null; this.master = null; this.noise = null; this.supported = !!(window.AudioContext || window.webkitAudioContext); this.last = {}; }
+  unlock() {
+    if (!this.supported) return false;
+    try {
+      if (!this.ctx) {
+        const C = window.AudioContext || window.webkitAudioContext; this.ctx = new C();
+        this.master = this.ctx.createGain(); const comp = this.ctx.createDynamicsCompressor();
+        this.master.connect(comp); comp.connect(this.ctx.destination); this.applyVolume();
+        const len = Math.floor(this.ctx.sampleRate * 0.6), buf = this.ctx.createBuffer(1, len, this.ctx.sampleRate), d = buf.getChannelData(0);
+        for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+        this.noise = buf;
+      }
+      if (this.ctx.state === 'suspended') this.ctx.resume().catch(() => {});
+      return true;
+    } catch (e) { this.supported = false; return false; }
+  }
+  applyVolume() { if (this.master) this.master.gain.setTargetAtTime(this.cfg.audioOn ? Math.pow(this.cfg.volume, 1.6) : 0, this.ctx.currentTime, 0.03); }
+  ready(key, gapMs) {
+    if (!this.ctx || this.ctx.state !== 'running' || !this.cfg.audioOn) return false;
+    const now = performance.now(); if (now - (this.last[key] || 0) < gapMs) return false; this.last[key] = now; return true;
+  }
+  tone(freq, t0, dur, peak, dest) {
+    const c = this.ctx, o = c.createOscillator(), g = c.createGain(); o.type = 'sine'; o.frequency.value = freq;
+    g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(peak, t0 + 0.012); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    o.connect(g); g.connect(dest); o.start(t0); o.stop(t0 + dur + 0.05); o.onended = () => { o.disconnect(); g.disconnect(); };
+  }
+  hit(streak) {
+    if (!this.cfg.soundHit || !this.ready('hit', 70)) return;
+    const c = this.ctx, t = c.currentTime, f = [523.25, 587.33, 659.25, 783.99, 880][streak % 5];
+    const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 3200; lp.connect(this.master);
+    this.tone(f, t, 0.34, 0.14, lp); this.tone(f * 1.5, t + 0.012, 0.28, 0.07, lp); this.tone(f * 2, t + 0.02, 0.2, 0.035, lp);
+    setTimeout(() => lp.disconnect(), 700);
+  }
+  miss() {
+    if (!this.cfg.soundMiss || !this.ready('miss', 120)) return;
+    const c = this.ctx, t = c.currentTime, s = c.createBufferSource(), bp = c.createBiquadFilter(), lp = c.createBiquadFilter(), g = c.createGain();
+    s.buffer = this.noise; bp.type = 'bandpass'; bp.frequency.value = 800; bp.Q.value = 0.7; lp.type = 'lowpass'; lp.frequency.value = 2400;
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.2, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.24);
+    s.connect(bp); bp.connect(lp); lp.connect(g); g.connect(this.master); s.start(t, Math.random() * 0.2, 0.3);
+    s.onended = () => { s.disconnect(); bp.disconnect(); lp.disconnect(); g.disconnect(); };
+  }
+  stim(action) {
+    if (!this.cfg.soundStim || !this.ready('stim', 160)) return;
+    this.tone([392, 330, 262][action], this.ctx.currentTime, 0.07, 0.03, this.master);
+  }
+  chime() {
+    if (!this.cfg.soundCue || !this.ready('cue', 500)) return;
+    const t = this.ctx.currentTime; this.tone(659.25, t, 0.4, 0.07, this.master); this.tone(880, t + 0.12, 0.5, 0.06, this.master);
+  }
+}
+
+/* =====================================================================
+ * Renderers
+ * ===================================================================== */
+const MODE_RGB = { train: '45,212,191', manual: '228,228,231', eval: '167,139,250' };
+
+class DishRenderer {
+  constructor(canvas) {
+    this.canvas = canvas; this.ctx = canvas.getContext('2d'); this.base = document.createElement('canvas');
+    this.portrait = false; this.s = 1; this.fx = []; this.trail = []; this.flashPaddle = 0; this.missGlow = 0; this.t = 0;
+    const r = new Rng(20260); this.groups = [];
+    for (let g = 0; g < 14; g++) {
+      const sx = r.range(40, FIELD_W - 60), sy = r.range(30, FIELD_H - 30), branches = [];
+      for (let b = 0; b < 4; b++) {
+        let a = r.range(0, 6.28), x = sx, y = sy; const pts = [x, y];
+        for (let k = 0; k < 8; k++) { a += r.range(-0.6, 0.6); const l = r.range(22, 42); x += Math.cos(a) * l; y += Math.sin(a) * l; pts.push(x, y); }
+        branches.push(pts);
+      }
+      this.groups.push({ x: sx, y: sy, branches, rad: r.range(4, 7) });
+    }
+    this.blots = Array.from({ length: 46 }, () => ({ x: r.range(0, FIELD_W), y: r.range(0, FIELD_H), r: r.range(20, 90), a: r.range(0.012, 0.035) }));
+  }
+  resize(portrait) {
+    this.portrait = portrait;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2), w = Math.max(1, this.canvas.clientWidth), h = Math.max(1, this.canvas.clientHeight);
+    this.canvas.width = Math.round(w * dpr); this.canvas.height = Math.round(h * dpr);
+    this.base.width = this.canvas.width; this.base.height = this.canvas.height;
+    this.s = (portrait ? w / FIELD_H : w / FIELD_W) * dpr;
+    this.buildBase();
+  }
+  applyT(ctx) { const s = this.s; if (this.portrait) ctx.setTransform(0, s, s, 0, 0, 0); else ctx.setTransform(s, 0, 0, s, 0, 0); }
+  /** Pointer position (CSS px relative to canvas) → field coordinates. */
+  toField(px, py) {
+    const k = this.s / Math.min(window.devicePixelRatio || 1, 2);
+    return this.portrait ? { x: py / k, y: px / k } : { x: px / k, y: py / k };
+  }
+  buildBase() {
+    const c = this.base.getContext('2d'); c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, this.base.width, this.base.height); this.applyT(c);
+    c.fillStyle = '#05070a'; c.fillRect(0, 0, FIELD_W, FIELD_H);
+    let g = c.createRadialGradient(FIELD_W * 0.5, FIELD_H * 0.5, 40, FIELD_W * 0.5, FIELD_H * 0.5, FIELD_W * 0.62);
+    g.addColorStop(0, '#0c141b'); g.addColorStop(1, '#04060a'); c.fillStyle = g; c.fillRect(0, 0, FIELD_W, FIELD_H);
+    for (const b of this.blots) { g = c.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.r); g.addColorStop(0, `rgba(94,160,190,${b.a})`); g.addColorStop(1, 'rgba(94,160,190,0)'); c.fillStyle = g; c.fillRect(b.x - b.r, b.y - b.r, b.r * 2, b.r * 2); }
+    c.fillStyle = 'rgba(160,190,210,0.05)';
+    for (let x = 20; x < FIELD_W; x += 40) for (let y = 20; y < FIELD_H; y += 40) c.fillRect(x, y, 1.5, 1.5);
+    c.strokeStyle = 'rgba(140,180,205,0.10)'; c.lineWidth = 1.2; c.lineCap = 'round';
+    for (const gr of this.groups) {
+      for (const pts of gr.branches) { c.beginPath(); c.moveTo(pts[0], pts[1]); for (let i = 2; i < pts.length; i += 2) c.lineTo(pts[i], pts[i + 1]); c.stroke(); }
+      c.fillStyle = 'rgba(140,180,205,0.14)'; c.beginPath(); c.arc(gr.x, gr.y, gr.rad, 0, 6.2832); c.fill();
+    }
+    g = c.createRadialGradient(FIELD_W / 2, FIELD_H / 2, FIELD_H * 0.45, FIELD_W / 2, FIELD_H / 2, FIELD_W * 0.62);
+    g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,0.55)'); c.fillStyle = g; c.fillRect(0, 0, FIELD_W, FIELD_H);
+    c.strokeStyle = 'rgba(255,255,255,0.07)'; c.lineWidth = 1.5; roundRectPath(c, 6, 6, FIELD_W - 12, FIELD_H - 12, 26); c.stroke();
+  }
+  addEffect(kind, x, y) { if (this.fx.length < 10) this.fx.push({ kind, x, y, t: 0 }); if (kind === 'hit') this.flashPaddle = 1; else this.missGlow = 1; }
+  clearEffects() { this.fx.length = 0; this.trail.length = 0; }
+  get animating() { return this.fx.length > 0 || this.flashPaddle > 0 || this.missGlow > 0; }
+  draw(e, st, dt, acts) {
+    const ctx = this.ctx; this.t += dt;
+    ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(this.base, 0, 0); this.applyT(ctx);
+    const rgb = MODE_RGB[st.mode] || MODE_RGB.train, p = e.paddle, b = e.ball;
+    // Neural traces respond to hidden-unit activation (kept faint so play stays clear).
+    ctx.lineWidth = 1.5; ctx.lineCap = 'round';
+    for (let gi = 0; gi < this.groups.length; gi++) {
+      const a = acts[gi % 12]; if (a < 0.05) continue; const gr = this.groups[gi];
+      ctx.strokeStyle = `rgba(${rgb},${0.04 + 0.2 * a})`;
+      for (const pts of gr.branches) { ctx.beginPath(); ctx.moveTo(pts[0], pts[1]); for (let i = 2; i < pts.length; i += 2) ctx.lineTo(pts[i], pts[i + 1]); ctx.stroke(); }
+      ctx.fillStyle = `rgba(${rgb},${0.1 + 0.4 * a})`; ctx.beginPath(); ctx.arc(gr.x, gr.y, gr.rad + 3 * a, 0, 6.2832); ctx.fill();
+      const br = gr.branches[gi & 3], n = br.length / 2 - 1, u = ((this.t * (0.3 + a) + gi * 0.17) % 1) * n, i0 = Math.floor(u), f = u - i0;
+      const px = br[i0 * 2] + (br[i0 * 2 + 2] - br[i0 * 2]) * f, py = br[i0 * 2 + 1] + (br[i0 * 2 + 3] - br[i0 * 2 + 1]) * f;
+      ctx.fillStyle = `rgba(${rgb},${0.25 + 0.5 * a})`; ctx.beginPath(); ctx.arc(px, py, 2.2, 0, 6.2832); ctx.fill();
+    }
+    // Boundary + paddle track
+    ctx.strokeStyle = 'rgba(255,255,255,0.16)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(e.wallX, 22); ctx.lineTo(e.wallX, FIELD_H - 22); ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,255,0.07)'; ctx.lineWidth = 1; ctx.setLineDash([3, 7]); ctx.beginPath(); ctx.moveTo(p.x, 22); ctx.lineTo(p.x, FIELD_H - 22); ctx.stroke(); ctx.setLineDash([]);
+    if (st.showPred && b.alive) { const y = e.predict().y; ctx.fillStyle = `rgba(${rgb},0.85)`; ctx.beginPath(); ctx.moveTo(p.x + 18, y); ctx.lineTo(p.x + 28, y - 5); ctx.lineTo(p.x + 28, y + 5); ctx.closePath(); ctx.fill(); }
+    // Effects
+    this.flashPaddle = Math.max(0, this.flashPaddle - dt * 3); this.missGlow = Math.max(0, this.missGlow - dt * 1.6);
+    if (this.missGlow > 0) { const g = ctx.createLinearGradient(FIELD_W, 0, FIELD_W - 160, 0); g.addColorStop(0, `rgba(245,158,11,${0.3 * this.missGlow})`); g.addColorStop(1, 'rgba(245,158,11,0)'); ctx.fillStyle = g; ctx.fillRect(FIELD_W - 160, 0, 160, FIELD_H); }
+    for (let i = this.fx.length - 1; i >= 0; i--) {
+      const f = this.fx[i]; f.t += dt / 0.55; if (f.t >= 1) { this.fx.splice(i, 1); continue; }
+      ctx.strokeStyle = f.kind === 'hit' ? `rgba(${rgb},${0.6 * (1 - f.t)})` : `rgba(245,158,11,${0.7 * (1 - f.t)})`; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(f.x, f.y, 8 + 44 * f.t, 0, 6.2832); ctx.stroke();
+    }
+    // Ball trail + ball
+    const tr = this.trail; if (tr.length && Math.hypot(tr[tr.length - 2] - b.x, tr[tr.length - 1] - b.y) > 90) tr.length = 0;
+    tr.push(b.x, b.y); if (tr.length > 28) tr.splice(0, 2);
+    for (let i = 0; i < tr.length; i += 2) { const k = i / tr.length; ctx.fillStyle = `rgba(244,244,245,${0.1 * k})`; ctx.beginPath(); ctx.arc(tr[i], tr[i + 1], b.r * (0.4 + 0.5 * k), 0, 6.2832); ctx.fill(); }
+    if (b.x < FIELD_W + 40) { ctx.fillStyle = `rgba(${rgb},0.16)`; ctx.beginPath(); ctx.arc(b.x, b.y, b.r * 2.2, 0, 6.2832); ctx.fill(); ctx.fillStyle = b.alive ? '#f4f4f5' : 'rgba(244,244,245,0.35)'; ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, 6.2832); ctx.fill(); }
+    // Paddle
+    ctx.fillStyle = `rgba(${rgb},${0.1 + 0.2 * this.flashPaddle})`; roundRectPath(ctx, p.x - p.w / 2 - 5, p.y - p.h / 2 - 5, p.w + 10, p.h + 10, 9); ctx.fill();
+    ctx.fillStyle = this.flashPaddle > 0 ? '#ffffff' : `rgb(${rgb})`; roundRectPath(ctx, p.x - p.w / 2, p.y - p.h / 2, p.w, p.h, 5); ctx.fill();
+  }
+}
+
+class NeuralRenderer {
+  constructor(canvas, model) { this.canvas = canvas; this.m = model; this.w = 300; this.h = 250; }
+  resize() { const s = setupCanvas(this.canvas, 250); this.ctx = s.ctx; this.w = s.w; this.h = s.h; }
+  layout() {
+    const w = this.w, narrow = w < 380, L = narrow ? 70 : 92, R = narrow ? 70 : 96, top = 16, bot = this.h - 16;
+    const xs = [L, L + (w - L - R) * 0.5, w - R], pos = [[], [], []];
+    const place = (n, i) => top + (bot - top) * (n === 1 ? 0.5 : i / (n - 1));
+    for (let i = 0; i < 8; i++) pos[0].push([xs[0], place(8, i)]);
+    for (let i = 0; i < 12; i++) pos[1].push([xs[1], place(12, i)]);
+    for (let i = 0; i < 3; i++) pos[2].push([xs[2], top + (bot - top) * (0.2 + 0.3 * i)]);
+    return pos;
+  }
+  draw() {
+    const c = this.ctx, m = this.m, pos = this.layout(); if (!c) return;
+    c.clearRect(0, 0, this.w, this.h);
+    if (m.flash > 0) {
+      const col = m.flashKind > 0 ? 'signal' : 'penalty', g = c.createRadialGradient(pos[2][1][0], pos[2][1][1], 0, pos[2][1][0], pos[2][1][1], this.w * 0.7);
+      g.addColorStop(0, Theme.c(col, 0.22 * m.flash)); g.addColorStop(1, Theme.c(col, 0)); c.fillStyle = g; c.fillRect(0, 0, this.w, this.h);
+    }
+    // Input → hidden edges: thickness = |fixed weight|, brightness = signal w·x
+    for (let j = 0; j < 12; j++) for (let i = 0; i < 8; i++) {
+      const w = m.w1[j * 8 + i], s = w * m.dx[i], a = 0.05 + 0.6 * Math.min(1, Math.abs(s));
+      c.strokeStyle = Theme.c(s >= 0 ? 'signal' : 'exp', a); c.lineWidth = 0.4 + 1.2 * Math.min(1, Math.abs(w) / 1.5);
+      c.beginPath(); c.moveTo(pos[0][i][0], pos[0][i][1]); c.lineTo(pos[1][j][0], pos[1][j][1]); c.stroke();
+    }
+    for (let k = 0; k < 3; k++) for (let j = 0; j < 12; j++) {
+      const w = m.w2[k * 12 + j], s = m.dh[j] * (0.25 + m.do_[k]), a = 0.05 + 0.65 * Math.min(1, s);
+      c.strokeStyle = Theme.c(w >= 0 ? 'signal' : 'exp', a); c.lineWidth = 0.4 + 1.2 * Math.abs(w);
+      c.beginPath(); c.moveTo(pos[1][j][0], pos[1][j][1]); c.lineTo(pos[2][k][0], pos[2][k][1]); c.stroke();
+    }
+    for (const p of m.pulses) {
+      if (!p.on || p.t < 0) continue;
+      const A = p.layer === 0 ? pos[0][p.a] : pos[1][p.a], B = p.layer === 0 ? pos[1][p.b] : pos[2][p.b];
+      c.fillStyle = Theme.c(p.sign > 0 ? 'signal' : 'exp', 0.9 * (1 - Math.abs(p.t - 0.5))); c.beginPath(); c.arc(A[0] + (B[0] - A[0]) * p.t, A[1] + (B[1] - A[1]) * p.t, 2 + 1.6 * p.str, 0, 6.2832); c.fill();
+    }
+    const node = (pt, act, r, col) => {
+      c.fillStyle = Theme.c('card', 1); c.beginPath(); c.arc(pt[0], pt[1], r + 1, 0, 6.2832); c.fill();
+      c.fillStyle = Theme.c(col, 0.15 + 0.85 * act); c.beginPath(); c.arc(pt[0], pt[1], r, 0, 6.2832); c.fill();
+      c.strokeStyle = Theme.c(col, 0.5); c.lineWidth = 1; c.stroke();
+    };
+    c.font = '10.5px ' + getComputedStyle(document.body).fontFamily; c.textBaseline = 'middle';
+    for (let i = 0; i < 8; i++) { node(pos[0][i], m.dx[i], 4.5, 'signal'); c.fillStyle = Theme.c('muted-foreground', 1); c.textAlign = 'right'; c.fillText(IN_LABELS[i], pos[0][i][0] - 10, pos[0][i][1]); }
+    for (let j = 0; j < 12; j++) node(pos[1][j], m.dh[j], 4, 'signal');
+    const tdCol = m.td >= 0 ? 'signal' : 'penalty';
+    for (let k = 0; k < 3; k++) {
+      const pt = pos[2][k], act = m.do_[k], sel = k === m.selected;
+      node(pt, act, 7 + 3 * act, 'signal');
+      if (sel) {
+        c.strokeStyle = Theme.c('foreground', 0.9); c.lineWidth = 1.5; c.beginPath(); c.arc(pt[0], pt[1], 12 + 5 * m.selPulse, 0, 6.2832); c.stroke();
+        if (Math.abs(m.td) > 0.002) { c.strokeStyle = Theme.c(tdCol, Math.min(0.9, 0.3 + Math.abs(m.td))); c.lineWidth = 2; c.beginPath(); c.arc(pt[0], pt[1], 17, 0, 6.2832); c.stroke(); }
+      }
+      c.textAlign = 'left'; c.fillStyle = Theme.c('foreground', sel ? 1 : 0.7); c.fillText(ACTION_NAMES[k], pt[0] + 24, pt[1] - 6);
+      c.fillStyle = Theme.c('muted-foreground', 1); c.fillText((m.q[k] >= 0 ? '+' : '') + m.q[k].toFixed(2), pt[0] + 24, pt[1] + 7);
+    }
+    c.fillStyle = Theme.c('muted-foreground', 0.8); c.textAlign = 'center'; c.fillText('Observation', pos[0][0][0], 6); c.fillText('Units', pos[1][0][0], 6); c.fillText('Q-values', pos[2][0][0], 6);
+  }
+}
+
+class ChartRenderer {
+  constructor(canvas, tip) { this.canvas = canvas; this.tip = tip; this.pts = []; this.pad = { l: 38, r: 18, t: 10, b: 22 }; this.h = 220; this.data = null; }
+  resize() { const s = setupCanvas(this.canvas, this.h); this.ctx = s.ctx; this.w = s.w; }
+  /** Rolling series from cumulative history; window is measured in episodes (resolution = history stride). */
+  static series(hist, win, metric) {
+    const out = [], origin = { ep: 0, cH: 0, cA: 0, cR: 0 }; let j = -1;
+    for (let i = 0; i < hist.length; i++) {
+      // j = latest earlier point at least `win` episodes back (or -1: window reaches the start)
+      while (j + 1 < i && hist[i].ep - hist[j + 1].ep >= win) j++;
+      const b0 = j >= 0 ? hist[j] : origin;
+      const dA = hist[i].cA - b0.cA, dE = hist[i].ep - b0.ep;
+      out.push({ ep: hist[i].ep, v: metric === 'rate' ? (dA ? (hist[i].cH - b0.cH) / dA : null) : (dE ? (hist[i].cR - b0.cR) / dE : null), cond: hist[i].cond });
+    }
+    return out;
+  }
+  draw(hist, win, metric, evals, baseline) {
+    const c = this.ctx, W = this.w, H = this.h, P = this.pad; if (!c) return;
+    c.clearRect(0, 0, W, H); const pw = W - P.l - P.r, ph = H - P.t - P.b;
+    const s = ChartRenderer.series(hist, win, metric); this.pts = [];
+    const maxEp = Math.max(10, hist.length ? hist[hist.length - 1].ep : 10);
+    let lo = 0, hi = 1;
+    if (metric === 'reward') { lo = 0; hi = 0; for (const p of s) if (p.v != null) { lo = Math.min(lo, p.v); hi = Math.max(hi, p.v); } if (hi - lo < 1) hi = lo + 1; const pad = (hi - lo) * 0.08; lo -= pad; hi += pad; }
+    const X = e => P.l + (e / maxEp) * pw, Y = v => P.t + (1 - (v - lo) / (hi - lo)) * ph;
+    c.font = '11px ' + getComputedStyle(document.body).fontFamily; c.textBaseline = 'middle'; c.textAlign = 'right';
+    for (let i = 0; i <= 4; i++) {
+      const v = lo + (hi - lo) * i / 4, y = Y(v); c.strokeStyle = Theme.c('border', 1); c.lineWidth = 1; c.beginPath(); c.moveTo(P.l, y); c.lineTo(W - P.r, y); c.stroke();
+      c.fillStyle = Theme.c('muted-foreground', 1); c.fillText(metric === 'rate' ? Math.round(v * 100) + '%' : v.toFixed(1), P.l - 6, y);
+    }
+    c.textAlign = 'center'; c.textBaseline = 'top';
+    for (let i = 0; i <= 4; i++) c.fillText(String(Math.round(maxEp * i / 4)), P.l + pw * i / 4, H - P.b + 6);
+    if (!s.length) { c.fillStyle = Theme.c('muted-foreground', 1); c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('No completed episodes yet — start training to record history.', W / 2, H / 2); return; }
+    if (metric === 'rate' && baseline != null) { c.strokeStyle = Theme.c('muted-foreground', 0.9); c.setLineDash([4, 4]); c.beginPath(); c.moveTo(P.l, Y(baseline)); c.lineTo(W - P.r, Y(baseline)); c.stroke(); c.setLineDash([]); }
+    const step = Math.max(1, Math.ceil(s.length / pw)); let prev = null;
+    c.lineWidth = 2; c.lineJoin = 'round';
+    for (let i = 0; i < s.length; i += step) {
+      const p = s[i]; if (p.v == null) { prev = null; continue; }
+      const x = X(p.ep), y = Y(p.v); this.pts.push({ x, y, ep: p.ep, v: p.v, cond: p.cond });
+      if (prev) { c.strokeStyle = Theme.c(p.cond === 'reinforced' ? 'signal' : p.cond === 'outcome' ? 'exp' : 'penalty', 1); c.beginPath(); c.moveTo(prev.x, prev.y); c.lineTo(x, y); c.stroke(); }
+      prev = { x, y };
+    }
+    if (metric === 'rate') for (const e of evals) {
+      if (e.policy !== 'agent') continue; const x = X(Math.min(e.atEpisode, maxEp)), y = Y(e.rate);
+      c.fillStyle = Theme.c('foreground', 1); c.beginPath(); c.moveTo(x, y - 5); c.lineTo(x + 5, y); c.lineTo(x, y + 5); c.lineTo(x - 5, y); c.closePath(); c.fill();
+    }
+  }
+  hover(clientX, clientY, metric) {
+    const r = this.canvas.getBoundingClientRect(), x = clientX - r.left; let best = null, bd = 1e9;
+    for (const p of this.pts) { const d = Math.abs(p.x - x); if (d < bd) { bd = d; best = p; } }
+    if (!best || bd > 30) { this.tip.hidden = true; return; }
+    this.tip.hidden = false; this.tip.textContent = `Episode ${best.ep} · ${metric === 'rate' ? fmtPct(best.v) : best.v.toFixed(2)} · ${COND_LABEL[best.cond] || ''}`;
+    this.tip.style.left = Math.min(best.x + 10, this.w - this.tip.offsetWidth - 4) + 'px'; this.tip.style.top = Math.max(0, best.y - 34) + 'px';
+  }
+}
+
+class QMapRenderer {
+  constructor(canvas) { this.canvas = canvas; }
+  resize() { const s = setupCanvas(this.canvas, 132); this.ctx = s.ctx; this.w = s.w; this.h = s.h; }
+  draw(agent, approach, tBin) {
+    const c = this.ctx; if (!c) return; const W = this.w, H = this.h, L = 40, T = 4, cw = (W - L - 4) / 9, rh = (H - T - 18) / 3;
+    c.clearRect(0, 0, W, H); c.font = '10px ' + getComputedStyle(document.body).fontFamily; c.textBaseline = 'middle';
+    for (let a = 0; a < 3; a++) { c.fillStyle = Theme.c('muted-foreground', 1); c.textAlign = 'right'; c.fillText(ACTION_NAMES[a], L - 6, T + rh * (a + 0.5)); }
+    const labels = ['≪', '−80', '−35', '−12', '0', '+12', '+35', '+80', '≫'];
+    for (let d = 0; d < 9; d++) {
+      const s = (((approach * 9 + d) * 3 + tBin) * 3 + 1) * 3 + 1, seen = agent.stateUpdates[s] > 0, best = agent.greedy(s, null);
+      c.textAlign = 'center'; c.fillStyle = Theme.c('muted-foreground', 1); c.fillText(labels[d], L + cw * (d + 0.5), H - 7);
+      for (let a = 0; a < 3; a++) {
+        const q = agent.q[s * 3 + a], x = L + cw * d + 1, y = T + rh * a + 1;
+        if (seen) { c.fillStyle = q >= 0 ? Theme.c('signal', Math.min(0.85, 0.08 + q * 0.7)) : Theme.c('penalty', Math.min(0.85, 0.08 + -q * 0.4)); } else c.fillStyle = Theme.c('muted', 0.8);
+        roundRectPath(c, x, y, cw - 2, rh - 2, 4); c.fill();
+        if (seen && a === best) { c.strokeStyle = Theme.c('foreground', 0.9); c.lineWidth = 1.5; c.stroke(); }
+        if (seen && cw > 26) { c.fillStyle = Theme.c('foreground', 0.9); c.textAlign = 'center'; c.fillText(q.toFixed(1), x + (cw - 2) / 2, y + (rh - 2) / 2); }
+      }
+    }
+  }
+}
+
+class CompareChart {
+  constructor(canvas) { this.canvas = canvas; }
+  resize() { const s = setupCanvas(this.canvas, 190); this.ctx = s.ctx; this.w = s.w; this.h = s.h; }
+  draw(out, maxEp) {
+    const c = this.ctx; if (!c) return; const W = this.w, H = this.h, P = { l: 36, r: 8, t: 8, b: 22 }, pw = W - P.l - P.r, ph = H - P.t - P.b;
+    c.clearRect(0, 0, W, H); c.font = '11px ' + getComputedStyle(document.body).fontFamily;
+    const X = e => P.l + e / maxEp * pw, Y = v => P.t + (1 - v) * ph;
+    for (let i = 0; i <= 4; i++) { const y = Y(i / 4); c.strokeStyle = Theme.c('border', 1); c.beginPath(); c.moveTo(P.l, y); c.lineTo(W - P.r, y); c.stroke(); c.fillStyle = Theme.c('muted-foreground', 1); c.textAlign = 'right'; c.textBaseline = 'middle'; c.fillText(i * 25 + '%', P.l - 5, y); }
+    c.textAlign = 'center'; c.textBaseline = 'top'; for (let i = 0; i <= 4; i++) c.fillText(String(Math.round(maxEp * i / 4)), P.l + pw * i / 4, H - P.b + 6);
+    if (!out) return;
+    const line = (arr, col, dash) => { if (!arr || !arr.length) return; c.strokeStyle = Theme.c(col, 1); c.lineWidth = 2; c.setLineDash(dash || []); c.beginPath(); arr.forEach((p, i) => { const x = X(p.ep), y = Y(p.rate); i ? c.lineTo(x, y) : c.moveTo(x, y); }); c.stroke(); c.setLineDash([]); };
+    if (out.R != null) { c.strokeStyle = Theme.c('muted-foreground', 1); c.setLineDash([4, 4]); c.beginPath(); c.moveTo(P.l, Y(out.R)); c.lineTo(W - P.r, Y(out.R)); c.stroke(); c.setLineDash([]); }
+    line(out.A, 'signal'); line(out.B, 'exp');
+    const lg = [['Seed A', 'signal'], ['Seed B', 'exp'], ['Random', 'muted-foreground']]; let x = P.l + 6;
+    c.textAlign = 'left'; c.textBaseline = 'middle';
+    for (const [t, col] of lg) { c.fillStyle = Theme.c(col, 1); c.fillRect(x, P.t + 8, 10, 3); c.fillStyle = Theme.c('foreground', 1); c.fillText(t, x + 14, P.t + 10); x += 68; }
+  }
+}
+
+/* =====================================================================
+ * Headless seed-comparison task (cooperative generator)
+ * ===================================================================== */
+function* compareTask(snap, seeds, total, interval, evalSeed, evalN, evalCap, out, prog) {
+  const learn = snap.condition !== 'none', shaped = snap.condition === 'reinforced' && snap.shaping;
+  const mk = seed => {
+    const ag = new ReinforcementLearningAgent(snap), r = new Rollout(snap, new GameEngine(new Rng(seed), snap), ag);
+    r.rng = new Rng((seed ^ 0xA5A5A5A5) >>> 0); r.policy = 'agent'; r.learn = learn; r.explore = true; r.shaped = shaped; r.cap = snap.rallyCap; r.rest = 0; r.hardReset();
+    return { ag, r };
+  };
+  const rate = h => h.hits / ((h.hits + h.misses) || 1);
+  out.R = rate(runEval(new ReinforcementLearningAgent(snap), snap, evalSeed, evalN, 'random', evalCap)); yield;
+  const ctx = [mk(seeds[0]), mk(seeds[1])], keys = ['A', 'B'];
+  keys.forEach((k, i) => out[k].push({ ep: 0, rate: rate(runEval(ctx[i].ag, snap, evalSeed, evalN, 'agent', evalCap)) }));
+  for (let done = 0; done < total;) {
+    const target = Math.min(total, done + interval);
+    for (let i = 0; i < 2; i++) {
+      const { ag, r } = ctx[i]; let n = 0, eps = 0;
+      while (eps < target - done) {
+        if (r.step() & F.EPISODE_END) { eps++; if (learn) { ag.episodes++; ag.decayEpsilon(); } }
+        if ((++n & 8191) === 0) yield;
+      }
+      out[keys[i]].push({ ep: target, rate: rate(runEval(ag, snap, evalSeed, evalN, 'agent', evalCap)) });
+    }
+    done = target; prog.value = done / total; yield;
+  }
+}
+
+/* =====================================================================
+ * ApplicationController — state, UI wiring, loops.
+ * ===================================================================== */
+class ApplicationController {
+  constructor() {
+    this.cfg = { ...DEFAULTS };
+    this.t0 = performance.now();
+    const cfg = this.cfg;
+    this.agent = new ReinforcementLearningAgent(cfg);
+    this.train = new Rollout(cfg, new GameEngine(new Rng(cfg.seed), cfg), this.agent);
+    this.train.rng = new Rng((cfg.seed ^ 0xA5A5A5A5) >>> 0);
+    this.evalR = new Rollout(cfg, new GameEngine(new Rng(cfg.evalSeed), cfg), this.agent);
+    this.manualR = new Rollout(cfg, new GameEngine(new Rng(cfg.seed + 101), cfg), this.agent); this.manualR.policy = 'manual';
+    this.series = { train: new ExperimentMetrics(), eval: new ExperimentMetrics(), manual: new ExperimentMetrics() };
+    this.evals = []; this.evalRun = { active: false, total: 0, policy: 'agent', seed: 0 };
+    this.logs = []; this.neural = new NeuralActivityModel(7); this.audio = new AudioEngine(cfg);
+    this.mode = 'train'; this.view = 'train'; this.running = false; this.hasRun = { train: false, eval: false, manual: false };
+    this.runIndex = 1; this.bestRecent = 0; this.acc = 0; this.raf = 0; this.dirty = 4; this.last = 0;
+    this.fxOn = true; this.soundOn = true; this.cmp = null; this.cmpRaf = 0; this.cmpOut = null; this.cmpTotal = 300;
+    this.nnR = null; this.nnSeen = -1; this.lastOutcome = null; this.tm = { te: 0, ch: 0, su: 0, lg: 0, qm: 0 };
+    this.flags = { chart: true, sum: true, log: true }; this.sizes = {};
+    this.reduceMotion = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+    this.storageOK = (() => { try { localStorage.setItem('neurodish.t', '1'); localStorage.removeItem('neurodish.t'); return true; } catch (e) { return false; } })();
+    this.frame = ts => this.onFrame(ts);
+    this.runCmp = () => this.cmpStep();
+  }
+  $(id) { const el = document.getElementById(id); if (!el) console.error('Missing element #' + id); return el; }
+  get active() { return this.mode === 'train' ? this.train : this.mode === 'eval' ? this.evalR : this.manualR; }
+  get speedNum() { if (this.mode === 'manual') return 1; return this.cfg.speed === 'max' ? Infinity : Number(this.cfg.speed); }
+  get expId() { return 'ND-' + String(this.cfg.seed).padStart(4, '0') + '-' + String(this.runIndex).padStart(2, '0'); }
+
+  init() {
+    Theme.read();
+    this.dish = new DishRenderer(this.$('dish')); this.nnR2 = new NeuralRenderer(this.$('neural'), this.neural);
+    this.chart = new ChartRenderer(this.$('chart'), this.$('chartTip')); this.qmap = new QMapRenderer(this.$('qmap')); this.cmpChart = new CompareChart(this.$('cmpChart'));
+    this.configureRollouts(); this.bindUI(); this.syncCfgUI(); this.updateThemeIcon(); this.updateMuteIcon();
+    this.resizeAll(true);
+    if (window.ResizeObserver) new ResizeObserver(() => { if (!this.rzq) this.rzq = requestAnimationFrame(() => { this.rzq = 0; this.resizeAll(); }); }).observe(document.querySelector('.layout'));
+    window.addEventListener('resize', () => this.resizeAll());
+    document.addEventListener('visibilitychange', () => { this.last = performance.now(); this.acc = 0; if (!document.hidden) this.kick(); });
+    this.log('info', 'Experiment initialized · ' + this.expId + ' · seed ' + this.cfg.seed);
+    this.refreshModelInfo(); this.updateAll(); this.kick();
+    this.openDialog(this.$('introDlg'));
+  }
+
+  /* ---------- Rollout configuration ---------- */
+  configureRollouts() {
+    const c = this.cfg, learnCond = c.condition !== 'none', shaped = c.condition === 'reinforced' && c.shaping;
+    const t = this.train; t.policy = 'agent'; t.learn = learnCond; t.explore = true; t.shaped = shaped; t.cap = c.rallyCap; t.rest = 0.35;
+    const m = this.manualR; m.policy = 'manual'; m.learn = c.learnFromManual && learnCond; m.explore = false; m.shaped = shaped; m.cap = 0; m.rest = 0.5;
+    if (!this.evalRun.active) { const e = this.evalR; e.cap = c.evalCap; e.rest = 0.25; }
+  }
+
+  /* ---------- Small UI helpers ---------- */
+  openDialog(d) { if (typeof d.showModal === 'function') { if (!d.open) d.showModal(); } else d.setAttribute('open', ''); }
+  closeDialog(d) { if (typeof d.close === 'function') d.close(); else d.removeAttribute('open'); }
+  confirmAction(title, text, ok, destructive) {
+    const d = this.$('confirmDlg');
+    if (typeof d.showModal !== 'function') return Promise.resolve(window.confirm(title + '\n' + text));
+    return new Promise(res => {
+      this.$('cfTitle').textContent = title; this.$('cfText').textContent = text; const b = this.$('cfOk'); b.textContent = ok; b.className = 'btn' + (destructive ? ' destructive' : '');
+      d.returnValue = ''; const done = () => { d.removeEventListener('close', done); res(d.returnValue === 'ok'); }; d.addEventListener('close', done); d.showModal();
+    });
+  }
+  toast(msg, kind) {
+    const box = this.$('toasts'), el = document.createElement('div'); el.className = 'toast'; if (kind) el.dataset.k = kind; el.textContent = msg; box.appendChild(el);
+    while (box.children.length > 4) box.removeChild(box.firstChild);
+    setTimeout(() => el.remove(), 3800);
+  }
+  log(level, msg) {
+    this.logs.push({ t: (performance.now() - this.t0) / 1000, ep: this.series.train.episodes, level, msg });
+    if (this.logs.length > 400) this.logs.splice(0, 100);
+    this.flags.log = true;
+  }
+  download(name, text, mime) {
+    try { const url = URL.createObjectURL(new Blob([text], { type: mime })), a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 1500); }
+    catch (e) { this.toast('Download is not available in this browser.', 'error'); }
+  }
+  unlockAudio() { this.audio.unlock(); }
+
+  /* ---------- Config binding ---------- */
+  fmtOut(k, v) {
+    switch (k) {
+      case 'ballSpeed': case 'paddleSpeed': return Math.round(v) + ' px/s';
+      case 'variability': case 'volume': return Math.round(v * 100) + '%';
+      case 'rewardMag': case 'penaltyMag': return '+' + v.toFixed(1);
+      default: return String(v);
+    }
+  }
+  syncCfgUI(only) {
+    document.querySelectorAll('[data-cfg]').forEach(el => {
+      const k = el.dataset.cfg; if (only && k !== only) return; const v = this.cfg[k];
+      if (el.type === 'checkbox') el.checked = !!v; else if (document.activeElement !== el || el.tagName === 'SELECT') el.value = v;
+    });
+    document.querySelectorAll('[data-out]').forEach(o => { const k = o.dataset.out; if (!only || k === only) o.textContent = this.fmtOut(k, this.cfg[k]); });
+    if (!only || only === 'seed') this.$('seedInput').value = this.cfg.seed;
+    if (!only || only === 'condition') this.$('condDesc').textContent = COND_DESC[this.cfg.condition];
+    if (!only || only === 'diagnostics') this.$('diagBox').hidden = !this.cfg.diagnostics;
+  }
+  setCfg(k, v) {
+    const old = this.cfg[k]; this.cfg[k] = sanitize(k, v); this.syncCfgUI(k);
+    if (old === this.cfg[k]) return;
+    switch (k) {
+      case 'condition': this.configureRollouts(); this.log('info', 'Condition changed: ' + COND_LABEL[this.cfg.condition]); this.flags.sum = true; this.toast('Condition: ' + COND_LABEL[this.cfg.condition]); break;
+      case 'shaping': case 'learnFromManual': case 'rallyCap': case 'evalCap': this.configureRollouts(); break;
+      case 'audioOn': case 'volume': this.audio.applyVolume(); this.updateMuteIcon(); break;
+      case 'diagnostics': this.resizeAll(true); break;
+      case 'window': case 'chartMetric': this.flags.chart = true; break;
+      case 'speed': this.acc = 0; break;
+      default: break;
+    }
+    this.kick();
+  }
+  bindUI() {
+    document.querySelectorAll('[data-cfg]').forEach(el => {
+      const k = el.dataset.cfg, ev = el.type === 'number' ? 'change' : 'input';
+      el.addEventListener(ev, () => this.setCfg(k, el.type === 'checkbox' ? el.checked : (el.type === 'range' || el.type === 'number') ? parseFloat(el.value) : el.value));
+    });
+    // Tabs
+    document.querySelectorAll('[data-tabs]').forEach(list => {
+      const tabs = Array.from(list.querySelectorAll('[role=tab]'));
+      const select = t => { tabs.forEach(b => { const on = b === t; b.setAttribute('aria-selected', on); b.tabIndex = on ? 0 : -1; this.$(b.getAttribute('aria-controls')).hidden = !on; }); this.resizeAll(true); };
+      tabs.forEach((t, i) => { t.addEventListener('click', () => select(t)); t.addEventListener('keydown', e => { const d = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0; if (d) { e.preventDefault(); const n = tabs[(i + d + tabs.length) % tabs.length]; n.focus(); select(n); } }); });
+      list.selectTab = select; list.tabs = tabs; select(tabs[0]);
+    });
+    // Mode + dataset views
+    this.$('modeSeg').addEventListener('click', e => { const b = e.target.closest('[data-mode]'); if (b) this.setMode(b.dataset.mode); });
+    this.$('viewSeg').addEventListener('click', e => { const b = e.target.closest('[data-view]'); if (b) { this.view = b.dataset.view; this.updateAll(); } });
+    // Run controls
+    this.$('btnRun').addEventListener('click', () => this.toggleRun());
+    this.$('btnResetEp').addEventListener('click', () => this.resetEpisode());
+    this.$('btnMute').addEventListener('click', () => { this.unlockAudio(); this.setCfg('audioOn', !this.cfg.audioOn); });
+    this.$('btnTheme').addEventListener('click', () => this.toggleTheme());
+    this.$('btnAbout').addEventListener('click', () => { this.$('introStart').textContent = 'Continue'; this.openDialog(this.$('introDlg')); });
+    this.$('introStart').addEventListener('click', () => { this.unlockAudio(); this.closeDialog(this.$('introDlg')); if (!this.running && !this.hasRun.train && this.mode === 'train') { this.setRunning(true); this.log('info', 'Training started'); } });
+    this.$('introLater').addEventListener('click', () => { this.unlockAudio(); this.closeDialog(this.$('introDlg')); });
+    // Agent / model / eval / compare
+    this.$('btnReseed').addEventListener('click', () => this.reseed());
+    this.$('seedInput').addEventListener('keydown', e => { if (e.key === 'Enter') this.reseed(); });
+    this.$('btnEpsNow').addEventListener('click', () => { this.agent.epsilon = this.cfg.eps0; this.log('info', 'Exploration ε set to ' + this.cfg.eps0); this.updateAll(); });
+    this.$('btnSave').addEventListener('click', () => this.saveModel());
+    this.$('btnLoad').addEventListener('click', () => this.loadModel());
+    this.$('btnExport').addEventListener('click', () => this.exportModel());
+    this.$('btnImport').addEventListener('click', () => this.$('fileImport').click());
+    this.$('fileImport').addEventListener('change', e => this.importModel(e.target));
+    this.$('btnReset').addEventListener('click', () => this.resetTraining());
+    this.$('btnEvalRun').addEventListener('click', () => { this.unlockAudio(); this.startEval(); });
+    this.$('btnEvalCancel').addEventListener('click', () => this.cancelEval());
+    this.$('btnCmp').addEventListener('click', () => this.startCompare());
+    this.$('btnCmpCancel').addEventListener('click', () => this.cancelCompare());
+    this.$('btnTestHit').addEventListener('click', () => { this.unlockAudio(); this.audio.hit(0); });
+    this.$('btnTestMiss').addEventListener('click', () => { this.unlockAudio(); this.audio.miss(); });
+    this.$('btnExportReport').addEventListener('click', () => this.exportReport());
+    this.$('btnExportCsv').addEventListener('click', () => this.exportCsv());
+    this.$('btnLogClear').addEventListener('click', () => { this.logs.length = 0; this.flags.log = true; });
+    this.$('btnLogJson').addEventListener('click', () => this.download('neurodish-log.json', JSON.stringify(this.logs, null, 1), 'application/json'));
+    this.$('btnLogCsv').addEventListener('click', () => this.download('neurodish-log.csv', 'time_s,episode,level,message\n' + this.logs.map(l => [l.t.toFixed(1), l.ep, l.level, '"' + l.msg.replace(/"/g, '""') + '"'].join(',')).join('\n'), 'text/csv'));
+    this.$('qApproach').addEventListener('change', () => { this.tm.qm = 0; this.kick(); });
+    this.$('qTta').addEventListener('change', () => { this.tm.qm = 0; this.kick(); });
+    const hover = e => this.chart.hover(e.clientX, e.clientY, this.cfg.chartMetric);
+    this.$('chart').addEventListener('pointermove', hover); this.$('chart').addEventListener('pointerleave', () => { this.$('chartTip').hidden = true; });
+    this.bindInput();
+    // First user gesture unlocks audio; listener removes itself once the context runs.
+    const unlock = () => { if (this.audio.unlock() && this.audio.ctx && this.audio.ctx.state === 'running') { document.removeEventListener('pointerdown', unlock, true); document.removeEventListener('keydown', unlock, true); } };
+    document.addEventListener('pointerdown', unlock, true); document.addEventListener('keydown', unlock, true);
+    window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').addEventListener && matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change', e => { this.reduceMotion = e.matches; });
+  }
+  bindInput() {
+    const stage = this.$('stage'); let pressed = false;
+    const setTarget = e => { const r = this.dish.canvas.getBoundingClientRect(), f = this.dish.toField(e.clientX - r.left, e.clientY - r.top); this.manualR.manual.targetY = clamp(f.y, 0, FIELD_H); };
+    stage.addEventListener('pointerdown', e => { if (this.mode !== 'manual') return; pressed = true; try { stage.setPointerCapture(e.pointerId); } catch (x) { /* ignore */ } setTarget(e); });
+    stage.addEventListener('pointermove', e => { if (this.mode !== 'manual') return; if (e.pointerType === 'touch' && !pressed) return; setTarget(e); });
+    const end = e => { pressed = false; if (e.pointerType === 'touch' || e.type === 'pointerleave') this.manualR.manual.targetY = null; };
+    stage.addEventListener('pointerup', end); stage.addEventListener('pointercancel', end); stage.addEventListener('pointerleave', end);
+    const hold = (id, dir) => { const b = this.$(id), m = this.manualR.manual; const on = e => { e.preventDefault(); m[dir] = true; }; const off = () => { m[dir] = false; };
+      b.addEventListener('pointerdown', on); b.addEventListener('pointerup', off); b.addEventListener('pointerleave', off); b.addEventListener('pointercancel', off); };
+    hold('padUp', 'up'); hold('padDown', 'down');
+    const keyMap = { ArrowUp: 'up', KeyW: 'up', ArrowLeft: 'up', KeyA: 'up', ArrowDown: 'down', KeyS: 'down', ArrowRight: 'down', KeyD: 'down' };
+    const skip = t => t && t.closest && t.closest('input,select,textarea,[role=tab],dialog');
+    document.addEventListener('keydown', e => {
+      if (e.ctrlKey || e.metaKey || e.altKey || skip(e.target)) return;
+      if (e.code === 'Space' && e.target.tagName !== 'BUTTON') { e.preventDefault(); this.toggleRun(); return; }
+      const d = keyMap[e.code]; if (d && this.mode === 'manual') { e.preventDefault(); this.manualR.manual[d] = true; }
+    });
+    document.addEventListener('keyup', e => { const d = keyMap[e.code]; if (d) this.manualR.manual[d] = false; });
+    window.addEventListener('blur', () => { this.manualR.manual.up = false; this.manualR.manual.down = false; });
+  }
+  toggleTheme() {
+    const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'; document.documentElement.dataset.theme = next;
+    try { localStorage.setItem('neurodish.theme', next); } catch (e) { /* storage unavailable */ }
+    Theme.read(); this.updateThemeIcon(); this.kick();
+  }
+  updateThemeIcon() {
+    const dark = document.documentElement.dataset.theme === 'dark';
+    this.$('btnTheme').innerHTML = dark
+      ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>'
+      : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>';
+  }
+  updateMuteIcon() {
+    const on = this.cfg.audioOn, b = this.$('btnMute');
+    b.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>' + (on ? '<path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"/>' : '<path d="m22 9-6 6M16 9l6 6"/>') + '</svg>';
+    b.setAttribute('aria-label', on ? 'Mute audio' : 'Unmute audio'); b.title = on ? 'Mute audio' : 'Unmute audio';
+  }
+  resizeAll(force) {
+    const stage = this.$('stage'), portrait = stage.closest('.card').clientWidth < 600; stage.classList.toggle('portrait', portrait); this.$('padUp').textContent = portrait ? '\u25C0' : '\u25B2'; this.$('padDown').textContent = portrait ? '\u25B6' : '\u25BC';
+    const chk = (key, el) => { const w = el.clientWidth; const ch = this.sizes[key] !== w || (key === 'dish' && this.sizes.portrait !== portrait); this.sizes[key] = w; return ch || force; };
+    if (chk('dish', stage)) { this.sizes.portrait = portrait; this.dish.resize(portrait); }
+    if (chk('chart', this.$('chart').parentElement)) { this.chart.resize(); this.flags.chart = true; }
+    if (chk('neural', this.$('neural').parentElement)) this.nnR2.resize();
+    if (this.cfg.diagnostics && chk('qmap', this.$('qmap').parentElement)) this.qmap.resize();
+    if (chk('cmp', this.$('cmpChart').parentElement)) { this.cmpChart.resize(); this.drawCompare(); }
+    this.kick();
+  }
+
+  /* ---------- Modes and run state ---------- */
+  setMode(m) {
+    if (m === this.mode) return;
+    if (this.evalRun.active) this.cancelEval();
+    this.running = false; this.mode = m; this.view = m; this.nnSeen = -1; this.acc = 0;
+    this.manualR.manual.up = this.manualR.manual.down = false; this.dish.clearEffects();
+    if (m === 'eval') { const t = document.querySelector('[data-tabs=bench]'); t.selectTab(this.$('tabEval')); }
+    this.log('info', 'Mode: ' + ({ manual: 'Manual', train: 'AI training', eval: 'AI evaluation' })[m]);
+    this.updateAll(); this.kick();
+  }
+  setRunning(b) {
+    this.running = b; if (b) { this.hasRun[this.mode] = true; this.last = performance.now(); this.acc = 0; }
+    this.updateAll(); this.kick();
+  }
+  toggleRun() {
+    this.unlockAudio();
+    if (this.mode === 'eval' && !this.evalRun.active) { this.startEval(); return; }
+    this.setRunning(!this.running);
+    this.log('info', this.running ? (this.mode === 'train' ? 'Training resumed' : 'Resumed') : 'Paused');
+  }
+  resetEpisode() {
+    if (this.evalRun.active) return;
+    this.active.resetEpisode(); this.dish.clearEffects(); this.nnSeen = -1; this.log('info', 'Current episode reset (not recorded)'); this.updateAll(); this.kick();
+  }
+  async reseed() {
+    if (this.evalRun.active) return;
+    const seed = sanitize('seed', parseFloat(this.$('seedInput').value)); this.cfg.seed = seed; this.syncCfgUI('seed');
+    this.train.engine.rng = new Rng(seed); this.train.rng = new Rng((seed ^ 0xA5A5A5A5) >>> 0); this.manualR.engine.rng = new Rng(seed + 101);
+    this.train.hardReset(); this.manualR.hardReset(); this.dish.clearEffects(); this.nnSeen = -1;
+    this.log('info', 'Reseeded environment and exploration streams: ' + seed); this.toast('Seed ' + seed + ' applied'); this.updateAll(); this.kick();
+  }
+
+  /* ---------- Evaluation ---------- */
+  startEval() {
+    if (this.evalRun.active) return;
+    if (this.mode !== 'eval') this.setMode('eval');
+    const c = this.cfg, seed = c.evalSeed, e = this.evalR;
+    e.engine = new GameEngine(new Rng(seed), c); e.rng = new Rng((seed ^ 0x9e3779b1) >>> 0);
+    e.policy = c.evalPolicy; e.learn = false; e.explore = false; e.shaped = false; e.cap = c.evalCap; e.rest = 0.25; e.hardReset();
+    this.series.eval.reset(); this.evalRun = { active: true, total: c.evalEpisodes, policy: c.evalPolicy, seed, cond: c.condition };
+    this.dish.clearEffects(); this.nnSeen = -1;
+    this.log('info', `Evaluation started: ${c.evalPolicy === 'agent' ? 'frozen agent' : 'random baseline'}, ${c.evalEpisodes} episodes, seed ${seed}`);
+    this.setRunning(true);
+  }
+  cancelEval() {
+    if (!this.evalRun.active) return;
+    this.evalRun.active = false; this.running = false; this.log('warn', 'Evaluation cancelled'); this.updateAll(); this.kick();
+  }
+  finishEval() {
+    const s = this.series.eval, run = this.evalRun, n = s.attempts, ci = wilson(s.hits, n);
+    const res = { id: this.evals.length + 1, atEpisode: this.series.train.episodes, policy: run.policy, episodes: run.total, seed: run.seed, cap: this.cfg.evalCap, hits: s.hits, misses: s.misses, rate: n ? s.hits / n : 0, ci, cond: this.cfg.condition, updates: this.agent.updates };
+    this.evals.push(res); if (this.evals.length > 40) this.evals.shift();
+    run.active = false; this.running = false;
+    this.log('good', `Evaluation complete (${run.policy}): ${fmtPct(res.rate)} interception, ${s.hits}/${s.misses} hit/miss`);
+    this.toast(`Evaluation: ${fmtPct(res.rate)} interception rate`);
+    if (this.soundOn !== false && this.speedNum <= 8) this.audio.chime();
+    this.flags.sum = true; this.flags.chart = true; this.updateAll();
+  }
+
+  /* ---------- Main loop ---------- */
+  kick() { this.dirty = Math.max(this.dirty, 4); if (!this.raf) { this.last = performance.now(); this.raf = requestAnimationFrame(this.frame); } }
+  onFrame(ts) {
+    this.raf = 0;
+    const dt = Math.min(0.1, Math.max(0, (ts - this.last) / 1000)); this.last = ts;
+    try {
+      if (this.running) this.advance(dt);
+      this.render(dt, ts);
+    } catch (err) { console.error(err); this.running = false; this.toast('Internal error: simulation paused.', 'error'); }
+    if (this.running || this.dirty > 0 || this.dish.animating || this.neural.animating) { if (!this.running) this.dirty = Math.max(0, this.dirty - 1); this.raf = requestAnimationFrame(this.frame); }
+  }
+  advance(dt) {
+    const r = this.active, sp = this.speedNum, t0 = performance.now();
+    this.fxOn = sp <= 8 && !this.reduceMotion; this.soundOn = sp <= 4;
+    if (sp === Infinity) {
+      do {
+        for (let i = 0; i < 256 && this.running; i++) { const f = r.step(); if (f) this.process(f, r); }
+      } while (this.running && performance.now() - t0 < 12);
+      return;
+    }
+    this.acc = Math.min(this.acc + dt * sp, 0.25 * Math.max(1, sp));
+    let n = 0;
+    while (this.acc >= DT && this.running) {
+      this.acc -= DT; const f = r.step(); if (f) this.process(f, r);
+      if ((++n & 127) === 0 && performance.now() - t0 > 12) { this.acc = 0; break; }
+    }
+  }
+  process(f, r) {
+    const ser = this.mode === 'train' ? this.series.train : this.mode === 'eval' ? this.series.eval : this.series.manual, e = r.engine;
+    if ((f & F.DECISION) && this.soundOn) this.audio.stim(r.action);
+    if (f & F.HIT) {
+      ser.addAttempt(true); this.lastOutcome = 'hit';
+      if (this.fxOn) { this.dish.addEffect('hit', e.faceX, e.hitY); this.neural.react(1); }
+      if (this.soundOn) this.audio.hit(ser.streak - 1);
+      if (this.cfg.verbose && this.speedNum <= 4) this.log('event', `Interception (streak ${ser.streak})`);
+    }
+    if (f & F.MISS) {
+      ser.addAttempt(false); this.lastOutcome = 'miss';
+      if (this.fxOn) { this.dish.addEffect('miss', FIELD_W - 6, e.missY); this.neural.react(-1); }
+      if (this.soundOn) this.audio.miss();
+      if (this.cfg.verbose && this.speedNum <= 4) this.log('warn', 'Miss recorded');
+    }
+    if (f & F.EPISODE_END) this.onEpisodeEnd(r, ser);
+  }
+  onEpisodeEnd(r, ser) {
+    const le = r.lastEpisode, cond = this.cfg.condition, mode = this.mode;
+    ser.addEpisode(le.hits, le.terminal, le.reward, le.length, mode === 'train' ? cond : mode);
+    this.flags.chart = true;
+    if (mode === 'train') {
+      const a = this.agent; a.condEpisodes[cond]++;
+      if (cond !== 'none') { a.episodes++; a.decayEpsilon(); }
+      if (ser.episodes % 25 === 0) {
+        const rc = ser.recent(25);
+        this.log('info', `Episodes ${ser.episodes - 24}–${ser.episodes}: ${fmtPct(rc.rate)} interception · ε ${a.epsilon.toFixed(3)} · ${a.updates} updates`);
+        if (ser.episodes >= 50 && rc.rate != null && rc.rate > this.bestRecent + 0.05) {
+          this.bestRecent = rc.rate; this.log('good', `New best rolling interception rate: ${fmtPct(rc.rate)}`); if (this.soundOn) this.audio.chime();
+        }
+        this.flags.sum = true;
+      }
+    } else if (mode === 'eval' && this.evalRun.active && ser.episodes >= this.evalRun.total) this.finishEval();
+    else if (mode === 'manual' && this.cfg.verbose) this.log('event', `Manual rally ended after ${le.hits} returns`);
+  }
+
+  /* ---------- Rendering ---------- */
+  render(dt, ts) {
+    const r = this.active;
+    if (this.nnR !== r) { this.nnR = r; this.nnSeen = -1; }
+    if (r.decisions !== this.nnSeen) {
+      this.nnSeen = r.decisions; const s = r.obs.s;
+      this.neural.update(r.obs, this.agent.q.subarray(s * 3, s * 3 + 3), r.action, r.lastTD, this.fxOn && !this.reduceMotion);
+    }
+    this.neural.tick(dt);
+    this.dish.draw(r.engine, { mode: this.mode, showPred: this.cfg.diagnostics }, dt, this.neural.dh);
+    this.nnR2.draw();
+    const now = performance.now(), tm = this.tm;
+    if (now - tm.te > 150) { tm.te = now; this.updateTelemetry(); }
+    if (this.flags.chart && now - tm.ch > 250) { tm.ch = now; this.flags.chart = false; this.drawChart(); }
+    if (this.flags.sum && now - tm.su > 500) { tm.su = now; this.flags.sum = false; this.updateSummary(); }
+    if (this.flags.log && now - tm.lg > 300) { tm.lg = now; this.flags.log = false; this.renderLog(); }
+    if (this.cfg.diagnostics && now - tm.qm > 250) { tm.qm = now; this.qmap.draw(this.agent, Number(this.$('qApproach').value), Number(this.$('qTta').value)); }
+  }
+  updateAll() {
+    this.updateTelemetry(); this.updateControls(); this.flags.chart = this.flags.sum = this.flags.log = true;
+    this.tm.ch = this.tm.su = this.tm.lg = 0;
+  }
+  updateControls() {
+    const m = this.mode, ev = this.evalRun, set = (id, t) => { const el = this.$(id); if (el.textContent !== t) el.textContent = t; };
+    document.querySelectorAll('#modeSeg [data-mode]').forEach(b => b.setAttribute('aria-pressed', b.dataset.mode === m));
+    document.querySelectorAll('#viewSeg [data-view]').forEach(b => b.setAttribute('aria-pressed', b.dataset.view === this.view));
+    this.$('stage').dataset.mode = m;
+    const play = '<svg viewBox="0 0 24 24" fill="currentColor"><polygon points="6 3 20 12 6 21 6 3"/></svg>', pause = '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="14" y="4" width="4" height="16" rx="1"/><rect x="6" y="4" width="4" height="16" rx="1"/></svg>';
+    const label = this.running ? 'Pause' : (m === 'eval' && !ev.active) ? 'Run evaluation' : this.hasRun[m] ? 'Resume' : 'Start';
+    this.$('btnRun').innerHTML = (this.running ? pause : play) + '<span>' + label + '</span>';
+    const b = this.$('statusBadge');
+    b.dataset.state = this.running ? (m === 'eval' ? 'eval' : m === 'manual' ? 'manual' : 'running') : 'idle';
+    b.textContent = this.running ? (m === 'train' ? 'Training' : m === 'eval' ? `Evaluating ${this.series.eval.episodes}/${ev.total}` : 'Manual') : (ev.active ? 'Evaluation paused' : 'Paused');
+    document.querySelectorAll('[data-lock=eval]').forEach(el => { el.disabled = ev.active; });
+    this.$('btnResetEp').disabled = ev.active; this.$('btnEvalRun').disabled = ev.active; this.$('btnEvalCancel').disabled = !ev.active;
+    this.$('modeSeg').querySelectorAll('button').forEach(x => { x.disabled = false; });
+    const pct = ev.active ? Math.round(100 * this.series.eval.episodes / ev.total) : (this.series.eval.episodes && !ev.active && this.hasRun.eval ? 100 : 0);
+    this.$('evalFill').style.width = pct + '%'; this.$('evalBar').setAttribute('aria-valuenow', pct);
+    set('teDesc', ({ train: 'Training dataset', eval: 'Evaluation dataset (frozen policy)', manual: 'Manual dataset (human play)' })[this.view]);
+  }
+  updateTelemetry() {
+    const v = this.view, s = this.series[v], a = this.agent, w = this.cfg.window, rc = s.recent(w), set = (id, t) => { const el = this.$(id); if (el.textContent !== t) el.textContent = t; };
+    set('stEpisode', fmtInt(s.episodes + 1)); set('stHits', fmtInt(s.hits)); set('stMisses', fmtInt(s.misses)); set('stStreak', s.streak + ' / ' + s.bestStreak);
+    set('stRate', fmtPct(s.overallRate)); set('stRecentL', `Recent (${w} ep)`); set('stRecent', fmtPct(rc.rate)); set('stReward', fmtNum(s.cumReward, 1));
+    set('stLen', rc.len == null ? '—' : fmtNum(s.decisions / Math.max(1, s.episodes), 0)); set('stEps', v === 'train' ? fmtNum(a.epsilon, 3) : '—');
+    let status;
+    if (v === 'train') status = (this.mode === 'train' && this.running ? 'Running · ' : 'Paused · ') + (this.cfg.condition === 'none' ? 'frozen, no updates' : 'learning, ' + COND_LABEL[this.cfg.condition].toLowerCase());
+    else if (v === 'eval') status = this.evalRun.active ? `Evaluating ${s.episodes}/${this.evalRun.total} · ${this.evalRun.policy === 'agent' ? 'frozen agent' : 'random policy'}` : s.episodes ? `Complete · ${s.episodes} episodes` : 'No evaluation run yet';
+    else status = this.mode === 'manual' && this.running ? 'Manual control' : 'Paused';
+    set('stStatus', status);
+    set('stStates', a.statesVisited + ' / ' + N_STATES); set('stUpdates', fmtInt(a.updates)); set('stTd', fmtNum(a.tdEma, 3)); set('stAvgR', fmtNum(rc.reward, 2)); set('stPairs', a.pairsTried + ' / ' + N_STATES * N_ACTIONS);
+    const r = this.active; set('stAct', `${ACTION_NAMES[r.action]} · ${this.mode === 'manual' ? 'user' : r.explored ? 'explore' : 'greedy'}`);
+    set('hudL', `${this.expId} · ${({ manual: 'MANUAL', train: 'TRAIN', eval: 'EVAL' })[this.mode]} · ${this.running ? 'RUN' : 'PAUSED'}`);
+    const cur = this.series[this.mode]; set('hudR', this.mode === 'eval' && this.evalRun.active ? `Ep ${Math.min(cur.episodes + 1, this.evalRun.total)}/${this.evalRun.total}` : `Ep ${cur.episodes + 1}`);
+    const hb = this.$('hudB'); const o = this.lastOutcome; set('hudB', o === 'hit' ? 'Interception' : o === 'miss' ? 'Miss' : 'Awaiting first attempt'); hb.className = o === 'hit' ? 'ok' : o === 'miss' ? 'bad' : '';
+    this.updateControls();
+  }
+  drawChart() {
+    const sT = this.series.train, base = this.evals.slice().reverse().find(e => e.policy === 'random');
+    this.chart.draw(sT.history, this.cfg.window, this.cfg.chartMetric, this.evals, base ? base.rate : null);
+    this.$('chDesc').textContent = `Training history · rolling ${this.cfg.window} episodes · ${sT.episodes} completed`;
+  }
+  renderLog() {
+    const ul = this.$('logList'); ul.textContent = '';
+    const frag = document.createDocumentFragment();
+    for (const l of this.logs.slice(-120).reverse()) {
+      const li = document.createElement('li'); li.dataset.lv = l.level;
+      const tm = document.createElement('span'); tm.className = 'tm'; const m = Math.floor(l.t / 60), sec = Math.floor(l.t % 60);
+      tm.textContent = `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')} · ep ${l.ep}`;
+      const ms = document.createElement('span'); ms.className = 'ms'; ms.textContent = l.msg; li.append(tm, ms); frag.appendChild(li);
+    }
+    ul.appendChild(frag);
+  }
+  updateSummary() {
+    const c = this.cfg, a = this.agent, s = this.series.train, rc = s.recent(c.window), sheet = this.$('sumSheet'); sheet.textContent = '';
+    const ce = a.condEpisodes, first = s.firstAtt >= 50 ? s.firstHits / s.firstAtt : null;
+    const rows = [
+      ['Experiment', this.expId], ['Seed (env / exploration)', String(c.seed)], ['Condition now', COND_LABEL[c.condition]],
+      ['Episodes by condition', `${ce.reinforced} reinforced · ${ce.outcome} outcome-only · ${ce.none} none`],
+      ['Hyperparameters', `α ${c.alpha} · γ ${c.gamma} · ε₀ ${c.eps0} · decay ${c.epsDecay} · ε min ${c.epsMin}`],
+      ['Environment', `ball ${c.ballSpeed} px/s · paddle ${c.paddleSpeed} px/s · variability ${Math.round(c.variability * 100)}% · cap ${c.rallyCap} returns`],
+      ['Reward', `+${c.rewardMag} / −${c.penaltyMag}${c.shaping ? ' · shaping on' : ' · shaping off'}`],
+      ['Training episodes', fmtInt(s.episodes)], ['Initial rate (first 50 attempts)', fmtPct(first)], [`Recent rate (${c.window} ep)`, fmtPct(rc.rate)],
+      ['Exploration ε', fmtNum(a.epsilon, 3)], ['States visited · updates', `${a.statesVisited}/${N_STATES} · ${fmtInt(a.updates)}`]
+    ];
+    for (const [k, v] of rows) { const dt = document.createElement('dt'), dd = document.createElement('dd'); dt.textContent = k; dd.textContent = v; sheet.append(dt, dd); }
+    const body = this.$('sumEvalBody'); body.textContent = '';
+    if (!this.evals.length) { const tr = document.createElement('tr'), td = document.createElement('td'); td.colSpan = 7; td.className = 'muted'; td.textContent = 'No evaluations yet. Use the Evaluate tab.'; tr.appendChild(td); body.appendChild(tr); }
+    for (const e of this.evals.slice(-8)) {
+      const tr = document.createElement('tr');
+      [e.id, e.atEpisode, e.policy === 'agent' ? 'Agent' : 'Random', `${e.episodes} (seed ${e.seed})`, `${e.hits} / ${e.misses}`, fmtPct(e.rate), e.ci ? `${fmtPct(e.ci[0])} – ${fmtPct(e.ci[1])}` : '—'].forEach(t => { const td = document.createElement('td'); td.textContent = String(t); tr.appendChild(td); });
+      body.appendChild(tr);
+    }
+    const box = this.$('sumInterp'); box.textContent = '';
+    this.interpret().forEach(t => { const p = document.createElement('p'); p.textContent = t; box.appendChild(p); });
+  }
+  /** Plain-language reading of the evidence; never declares learning from episode count alone. */
+  interpret() {
+    const out = [], s = this.series.train, rc = s.recent(this.cfg.window), first = s.firstAtt >= 50 ? s.firstHits / s.firstAtt : null;
+    if (s.episodes === 0) return ['No training episodes recorded yet. Start training, then run a frozen-policy evaluation and a random baseline.'];
+    out.push(`Training: ${s.episodes} episodes. Interception rate moved from ${fmtPct(first)} (first 50 attempts) to ${fmtPct(rc.rate)} (last ${rc.n} episodes). Training curves include exploratory actions, so they are indicative only.`);
+    const ag = this.evals.slice().reverse().find(e => e.policy === 'agent');
+    if (!ag) { out.push('No frozen-policy evaluation yet — run one to test the learned policy without exploration or updates.'); return out; }
+    const rnd = this.evals.slice().reverse().find(e => e.policy === 'random' && e.seed === ag.seed && e.episodes === ag.episodes && e.cap === ag.cap);
+    if (!rnd) { out.push(`Frozen agent: ${fmtPct(ag.rate)} (95% CI ${fmtPct(ag.ci[0])}–${fmtPct(ag.ci[1])}). Run the random baseline with the same seed and episode count for a fair comparison.`); return out; }
+    const sep = ag.ci[0] > rnd.ci[1];
+    if (sep) out.push(`Consistent with learning: the frozen policy intercepted ${fmtPct(ag.rate)} (CI ${fmtPct(ag.ci[0])}–${fmtPct(ag.ci[1])}) versus ${fmtPct(rnd.rate)} (CI ${fmtPct(rnd.ci[0])}–${fmtPct(rnd.ci[1])}) for a random policy on identical conditions.`);
+    else if (ag.rate > rnd.rate) out.push(`Inconclusive: the agent (${fmtPct(ag.rate)}) is above random (${fmtPct(rnd.rate)}) but the intervals overlap. Train longer or increase evaluation episodes.`);
+    else out.push(`No evidence of learning: the frozen policy (${fmtPct(ag.rate)}) does not outperform random (${fmtPct(rnd.rate)}).`);
+    out.push('Intervals are approximate (attempts inside a rally are not fully independent). This is a computational result, not a biological finding.');
+    return out;
+  }
+
+  /* ---------- Persistence ---------- */
+  refreshModelInfo() {
+    let t = this.storageOK ? 'No model saved in this browser yet.' : 'Browser storage is unavailable; use Export / Import JSON.';
+    if (this.storageOK) { try { const raw = localStorage.getItem(MODEL_KEY); if (raw) { const o = JSON.parse(raw); t = `Saved model: ${o.progress.episodes} training episodes, ${o.progress.updates} updates, saved ${new Date(o.createdAt).toLocaleString()}.`; } } catch (e) { t = 'Saved model data is unreadable.'; } }
+    this.$('modelInfo').textContent = t;
+  }
+  async saveModel() {
+    if (!this.storageOK) { this.toast('Browser storage is unavailable. Use Export JSON.', 'error'); return; }
+    if (localStorage.getItem(MODEL_KEY) && !await this.confirmAction('Overwrite saved model?', 'A model is already saved in this browser. It will be replaced.', 'Overwrite', true)) return;
+    try { localStorage.setItem(MODEL_KEY, JSON.stringify(this.agent.serialize({ seed: this.cfg.seed, run: this.runIndex }))); this.log('good', 'Model saved to browser storage'); this.toast('Model saved'); }
+    catch (e) { this.toast('Could not save: storage is full or blocked.', 'error'); }
+    this.refreshModelInfo();
+  }
+  async loadModel() {
+    if (!this.storageOK) { this.toast('Browser storage is unavailable.', 'error'); return; }
+    let obj; try { const raw = localStorage.getItem(MODEL_KEY); if (!raw) { this.toast('No saved model found.'); return; } obj = JSON.parse(raw); } catch (e) { this.toast('Saved model is corrupted.', 'error'); return; }
+    await this.adoptModel(obj, 'browser storage');
+  }
+  async adoptModel(obj, src) {
+    const v = ReinforcementLearningAgent.validate(obj); if (!v.ok) { this.toast('Rejected model: ' + v.error, 'error'); this.log('warn', 'Model rejected: ' + v.error); return; }
+    if (this.agent.updates > 0 && !await this.confirmAction('Replace current model?', 'The current Q-table and training history will be replaced by the loaded model.', 'Replace', true)) return;
+    this.agent.restore(obj); for (const k of ['alpha', 'gamma', 'eps0', 'epsDecay', 'epsMin']) this.setCfg(k, obj.hyper[k]);
+    this.series.train.reset(); this.evals = []; this.bestRecent = 0; this.nnSeen = -1;
+    this.log('good', `Model loaded from ${src}: ${obj.progress.episodes} episodes, ε ${obj.progress.epsilon.toFixed(3)}`); this.toast('Model loaded'); this.updateAll(); this.kick();
+  }
+  exportModel() { this.download('neurodish-model.json', JSON.stringify(this.agent.serialize({ seed: this.cfg.seed, run: this.runIndex })), 'application/json'); this.log('info', 'Model exported'); }
+  importModel(input) {
+    const file = input.files && input.files[0]; input.value = ''; if (!file) return;
+    if (file.size > 2e6) { this.toast('File is too large for a NeuroDish model.', 'error'); return; }
+    const rd = new FileReader();
+    rd.onload = () => { let o; try { o = JSON.parse(String(rd.result)); } catch (e) { this.toast('Not valid JSON.', 'error'); return; } this.adoptModel(o, file.name); };
+    rd.onerror = () => this.toast('Could not read the file.', 'error'); rd.readAsText(file);
+  }
+  async resetTraining() {
+    if (this.evalRun.active) return;
+    if (!await this.confirmAction('Reset training?', 'This erases the Q-table, training history and evaluations. A model saved in the browser is not affected.', 'Reset', true)) return;
+    this.running = false; this.agent.reset(); this.series.train.reset(); this.series.eval.reset(); this.evals = []; this.runIndex++; this.bestRecent = 0; this.hasRun.train = false;
+    this.train.engine.rng = new Rng(this.cfg.seed); this.train.rng = new Rng((this.cfg.seed ^ 0xA5A5A5A5) >>> 0); this.train.hardReset(); this.dish.clearEffects(); this.nnSeen = -1; this.lastOutcome = null;
+    this.log('warn', 'Training reset · ' + this.expId); this.toast('Training reset'); this.updateAll(); this.kick();
+  }
+  exportReport() {
+    const c = this.cfg, s = this.series.train, m = this.series.manual;
+    const rep = { app: 'neurodish', note: 'Computational simulation; results are not evidence about biological neurons.', generatedAt: new Date().toISOString(), experimentId: this.expId,
+      config: { seed: c.seed, condition: c.condition, ballSpeed: c.ballSpeed, paddleSpeed: c.paddleSpeed, variability: c.variability, rewardMag: c.rewardMag, penaltyMag: c.penaltyMag, shaping: c.shaping, rallyCap: c.rallyCap, alpha: c.alpha, gamma: c.gamma, eps0: c.eps0, epsDecay: c.epsDecay, epsMin: c.epsMin },
+      agent: { epsilon: this.agent.epsilon, updates: this.agent.updates, statesVisited: this.agent.statesVisited, episodesByCondition: this.agent.condEpisodes },
+      training: { episodes: s.episodes, hits: s.hits, misses: s.misses, cumulativeReward: s.cumReward, history: s.history },
+      manual: { episodes: m.episodes, hits: m.hits, misses: m.misses }, evaluations: this.evals, interpretation: this.interpret() };
+    this.download('neurodish-report.json', JSON.stringify(rep, null, 1), 'application/json');
+  }
+  exportCsv() {
+    const h = this.series.train.history;
+    this.download('neurodish-training.csv', 'episode,cumulative_interceptions,cumulative_attempts,cumulative_reward,condition\n' + h.map(p => [p.ep, p.cH, p.cA, p.cR.toFixed(3), p.cond].join(',')).join('\n'), 'text/csv');
+  }
+
+  /* ---------- Seed comparison ---------- */
+  startCompare() {
+    if (this.cmp) return; const c = this.cfg, snap = { ...c };
+    this.cmpOut = { A: [], B: [], R: null }; this.cmpTotal = c.cmpEpisodes;
+    const prog = { value: 0 }, interval = Math.max(10, Math.round(c.cmpEpisodes / 15));
+    this.cmp = { it: compareTask(snap, [c.cmpSeedA, c.cmpSeedB], c.cmpEpisodes, interval, c.evalSeed, c.evalEpisodes, c.evalCap, this.cmpOut, prog), prog };
+    this.$('btnCmp').disabled = true; this.$('btnCmpCancel').disabled = false;
+    this.log('info', `Seed comparison started: seeds ${c.cmpSeedA} vs ${c.cmpSeedB}, ${c.cmpEpisodes} episodes, ${COND_LABEL[c.condition]}`);
+    this.cmpRaf = requestAnimationFrame(this.runCmp);
+  }
+  cmpStep() {
+    this.cmpRaf = 0; if (!this.cmp) return;
+    const t0 = performance.now(); let r;
+    try { do { r = this.cmp.it.next(); } while (!r.done && performance.now() - t0 < 10); } catch (e) { console.error(e); this.endCompare(false); return; }
+    const pct = Math.round(this.cmp.prog.value * 100); this.$('cmpFill').style.width = pct + '%'; this.$('cmpBar').setAttribute('aria-valuenow', pct); this.drawCompare();
+    if (r.done) this.endCompare(true); else this.cmpRaf = requestAnimationFrame(this.runCmp);
+  }
+  endCompare(ok) {
+    this.cmp = null; this.$('btnCmp').disabled = false; this.$('btnCmpCancel').disabled = true;
+    if (ok) {
+      const o = this.cmpOut, f = a => a.length ? fmtPct(a[a.length - 1].rate) : '—';
+      this.$('cmpInfo').textContent = `Final frozen-policy rates — seed A: ${f(o.A)}, seed B: ${f(o.B)}, random baseline: ${fmtPct(o.R)}. Same evaluation seed and episode count for all.`;
+      this.log('good', `Seed comparison complete: A ${f(o.A)} · B ${f(o.B)} · random ${fmtPct(o.R)}`);
+    }
+    this.drawCompare();
+  }
+  cancelCompare() { if (!this.cmp) return; if (this.cmpRaf) cancelAnimationFrame(this.cmpRaf); this.cmpRaf = 0; this.endCompare(false); this.log('warn', 'Seed comparison cancelled'); }
+  drawCompare() { this.cmpChart.draw(this.cmpOut, this.cmpTotal); }
+}
+
+const app = new ApplicationController();
+const start = () => { try { app.init(); } catch (e) { console.error(e); } };
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
+if (/[?&]debug\b/.test(location.search)) window.__neurodish = app;
+})();
+</script>
+</body>
+</html>
